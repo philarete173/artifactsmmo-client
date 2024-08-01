@@ -45,6 +45,8 @@ class ActionTypeEnum(Enum):
     CRAFTING = 'crafting'
     RECYCLING = 'recycling'
     DELETE = 'delete'
+    NEW_TASK = 'new task'
+    COMPLETE_TASK = 'complete task'
 
     AVAILABLE_ACTIONS = [
         MOVE,
@@ -53,6 +55,8 @@ class ActionTypeEnum(Enum):
         CRAFTING,
         EQUIP,
         UNEQUIP,
+        NEW_TASK,
+        COMPLETE_TASK,
     ]
 
 

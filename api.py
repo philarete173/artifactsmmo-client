@@ -118,6 +118,12 @@ class GameClient(BaseClient):
 
                     character.unequip(slot)
 
+            elif current_action == ActionTypeEnum.NEW_TASK.value:
+                character.get_task()
+
+            elif current_action == ActionTypeEnum.COMPLETE_TASK.value:
+                character.complete_task()
+
             else:
                 print('This is not a valid action!')
 
@@ -307,4 +313,14 @@ class Character(BaseClient):
             action_data={
                 'slot': slot,
             }
+        )
+
+    def get_task(self):
+        self._do_action(
+            action_name='task/new',
+        )
+
+    def complete_task(self):
+        self._do_action(
+            action_name='task/complete',
         )
