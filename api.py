@@ -58,12 +58,16 @@ class GameClient(BaseClient):
                 idx: action for idx, action in enumerate(ActionTypeEnum.AVAILABLE_ACTIONS.value, 1)
             }
             available_actions_str = "\n".join(f"{idx} - {name}" for idx, name in available_actions.items())
-            current_action_idx = int(input(
-                'What do you want to do?\n'
-                f'{available_actions_str}\n'
-                'Please type a number: '
-            ))
-            current_action = available_actions[current_action_idx]
+            try:
+                current_action_idx = int(input(
+                    'What do you want to do?\n'
+                    f'{available_actions_str}\n'
+                    'Please type a number: '
+                ))
+                current_action = available_actions[current_action_idx]
+            except ValueError:
+                print('Invalid input. Please try again.')
+                continue
 
             if current_action == ActionTypeEnum.MOVE.value:
                 print('Where do you want to move?')
@@ -113,6 +117,9 @@ class GameClient(BaseClient):
                     slot = slots_map[slot_idx]
 
                     character.unequip(slot)
+
+            else:
+                print('This is not a valid action!')
 
             print('')
 
