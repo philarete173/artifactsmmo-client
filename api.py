@@ -69,18 +69,24 @@ class GameClient(BaseClient):
                 print('Where do you want to move?')
                 x = int(input('X: '))
                 y = int(input('Y: '))
+
                 character.move(x, y)
             elif current_action == ActionTypeEnum.FIGHT.value:
-                character.fight()
+                count = input('How many times to fight?: ')
+                for _ in range(int(count)):
+                    character.fight()
+
             elif current_action == ActionTypeEnum.GATHERING.value:
                 count = input('How many times to gather?: ')
                 for _ in range(int(count)):
                     character.gathering()
+
             elif current_action == ActionTypeEnum.CRAFTING.value:
                 craft_name = input('What item do you want to craft?: ')
                 quantity = int(input('Нow many do you want to create?: '))
 
                 character.crafting(craft_name, quantity)
+
             elif current_action in [ActionTypeEnum.EQUIP.value, ActionTypeEnum.UNEQUIP.value]:
                 slots_map = {
                     idx: action.value for idx, action in enumerate(EquipmentSlotsEnum, 1)
@@ -97,6 +103,7 @@ class GameClient(BaseClient):
                     ))
                     slot = slots_map[slot_idx]
                     character.equip(item_name, slot)
+
                 elif current_action == ActionTypeEnum.UNEQUIP.value:
                     slot_idx = int(input(
                         'Which slot do you want to unequip?\n'
@@ -104,6 +111,7 @@ class GameClient(BaseClient):
                         'Please type a number: '
                     ))
                     slot = slots_map[slot_idx]
+
                     character.unequip(slot)
 
             print('')
