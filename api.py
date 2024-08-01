@@ -91,7 +91,7 @@ class GameClient(BaseClient):
                     item_name = input('What item do you want to equip?: ')
 
                     slot_idx = int(input(
-                        'Which slot do you want to equip the item in?'
+                        'Which slot do you want to equip the item in?\n'
                         f'{slots_map_str}\n'
                         'Please type a number: '
                     ))
@@ -99,7 +99,7 @@ class GameClient(BaseClient):
                     character.equip(item_name, slot)
                 elif current_action == ActionTypeEnum.UNEQUIP.value:
                     slot_idx = int(input(
-                        'Which slot do you want to unequip?'
+                        'Which slot do you want to unequip?\n'
                         f'{slots_map_str}\n'
                         'Please type a number: '
                     ))
