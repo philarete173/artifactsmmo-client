@@ -51,6 +51,8 @@ class ActionTypeEnum(Enum):
         FIGHT,
         GATHERING,
         CRAFTING,
+        EQUIP,
+        UNEQUIP,
     ]
 
 

@@ -6,7 +6,11 @@ from time import sleep
 
 import requests
 
-from enums import CharacterSexEnum, ActionTypeEnum
+from enums import (
+    CharacterSexEnum,
+    ActionTypeEnum,
+    EquipmentSlotsEnum,
+)
 
 
 class BaseClient:
@@ -77,8 +81,32 @@ class GameClient(BaseClient):
                 quantity = int(input('Нow many do you want to create?: '))
 
                 character.crafting(craft_name, quantity)
+            elif current_action in [ActionTypeEnum.EQUIP.value, ActionTypeEnum.UNEQUIP.value]:
+                slots_map = {
+                    idx: action.value for idx, action in enumerate(EquipmentSlotsEnum, 1)
+                }
+                slots_map_str = "\n".join(f"{idx} - {name}" for idx, name in slots_map.items())
 
-            print('\n')
+                if current_action == ActionTypeEnum.EQUIP.value:
+                    item_name = input('What item do you want to equip?: ')
+
+                    slot_idx = int(input(
+                        'Which slot do you want to equip the item in?'
+                        f'{slots_map_str}\n'
+                        'Please type a number: '
+                    ))
+                    slot = slots_map[slot_idx]
+                    character.equip(item_name, slot)
+                elif current_action == ActionTypeEnum.UNEQUIP.value:
+                    slot_idx = int(input(
+                        'Which slot do you want to unequip?'
+                        f'{slots_map_str}\n'
+                        'Please type a number: '
+                    ))
+                    slot = slots_map[slot_idx]
+                    character.unequip(slot)
+
+            print('')
 
     def select_character(self):
         characters = self.get_characters_list()
@@ -246,5 +274,22 @@ class Character(BaseClient):
             action_data={
                 'code': item_name,
                 'quantity': quantity,
+            }
+        )
+
+    def equip(self, item_name='', slot=''):
+        self._do_action(
+            action_name=ActionTypeEnum.EQUIP.value,
+            action_data={
+                'code': item_name,
+                'slot': slot,
+            }
+        )
+
+    def unequip(self, slot=''):
+        self._do_action(
+            action_name=ActionTypeEnum.UNEQUIP.value,
+            action_data={
+                'slot': slot,
             }
         )
