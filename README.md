@@ -62,19 +62,12 @@ What do you want to do?
 6 - unequip
 7 - new task
 8 - complete task
+9 - buy item
+10 - sell item
+11 - use scenario
 Please type a number: 
 ```
 
-If you want to run a specific set of actions, you can change the main script to call the character and pass it to the action script. 
-Examples of scripts are in the scripts.py file.
-
-```python
-from api import GameClient
-from scripts import craft_wooden_staff
-
-if __name__ == '__main__':
-    client = GameClient()
-    character = client.select_character()
-
-    craft_wooden_staff(character, quantity=5)
-```
+If you want to run a specific set of actions, you can add them as scripts to the storage. 
+Examples of scripts are in the scripts.py file. 
+They will then be available in the action menu item "use scenario"
