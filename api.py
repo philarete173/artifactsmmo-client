@@ -14,6 +14,7 @@ from enums import (
 
 
 class BaseClient:
+    """Basic client for sending requests."""
 
     def __init__(self):
         self.base_url = "https://api.artifactsmmo.com"
@@ -26,24 +27,33 @@ class BaseClient:
         }
 
     def _get_config(self):
+        """Open config file."""
+
         config = configparser.ConfigParser()
         config.read('config.ini')
 
         return config
 
     def _post(self, url='', data=None):
+        """Send POST request."""
+
         return self._do_request(method='post', url=url, data=data)
 
     def _get(self, url='', data=None):
+        """Send GET request."""
+
         return self._do_request(method='get', url=url, data=data)
 
     def _do_request(self, method='get', url='', data=None):
+        """Send request to game."""
+
         request = requests.request(method, self.base_url + url, json=data, headers=self.base_headers)
 
         return request
 
 
 class GameClient(BaseClient):
+    """Client for interacting with the game world."""
 
     def __init__(self):
         super().__init__()
@@ -51,6 +61,8 @@ class GameClient(BaseClient):
         self.check_server_status()
 
     def main_loop(self):
+        """User interaction in an infinite loop."""
+
         character = self.select_character()
 
         while True:
@@ -130,6 +142,8 @@ class GameClient(BaseClient):
             print('')
 
     def select_character(self):
+        """Selecting a character from the list on the account."""
+
         characters = self.get_characters_list()
         characters_map = {idx: name for idx, name in enumerate([character["name"] for character in characters], 1)}
         print(f'Characters on account: {", ".join(characters_map.values())}')
@@ -154,6 +168,8 @@ class GameClient(BaseClient):
         return selected_character
 
     def check_server_status(self):
+        """Checking the status of the server. If unavailable, the process will be terminated."""
+
         status_request = self._get()
 
         if status_request.status_code == 200:
@@ -164,6 +180,8 @@ class GameClient(BaseClient):
             sys.exit('Can\'t reach the server. Please try again later.')
 
     def get_characters_list(self):
+        """Getting a list of characters. If there are no characters, it will create one."""
+
         url = '/my/characters'
 
         characters_list = self._get(url=url)
@@ -183,6 +201,8 @@ class GameClient(BaseClient):
         return result
 
     def create_new_character(self):
+        """Creating a new character."""
+
         url = '/characters/create'
 
         name_correct = False
@@ -218,6 +238,7 @@ class GameClient(BaseClient):
 
 
 class Character(BaseClient):
+    """Client for character interaction."""
 
     def __init__(self, name) -> None:
         super().__init__()
@@ -227,6 +248,8 @@ class Character(BaseClient):
         self._get_character_info()
 
     def _get_character_info(self):
+        """Getting all character data and storing in instance."""
+
         character_info_request = requests.get(
             url=f'{self.base_url}/characters/{self.name}'
         )
@@ -236,6 +259,8 @@ class Character(BaseClient):
                 setattr(self, key, value)
 
     def _get_last_action(self):
+        """Getting info about last action from character log."""
+
         last_action_data = self._get(
             url=f'/my/{self.name}/logs',
             data={
@@ -249,6 +274,8 @@ class Character(BaseClient):
             print(f'Can\'t get last action. {error_block["message"]}.')
 
     def _do_action(self, action_name='', action_data=None):
+        """General method for sending an action request."""
+
         if action_data is None:
             action_data = {}
 
@@ -271,6 +298,8 @@ class Character(BaseClient):
             print(f'Can\'t perform action. {error_block["message"]}')
 
     def move(self, x=0, y=0):
+        """Move the character to a given map cell."""
+
         self._do_action(
             action_name=ActionTypeEnum.MOVE.value,
             action_data={
@@ -280,16 +309,22 @@ class Character(BaseClient):
         )
 
     def fight(self):
+        """Start fight."""
+
         self._do_action(
             action_name=ActionTypeEnum.FIGHT.value,
         )
 
     def gathering(self):
+        """Start gathering resources."""
+
         self._do_action(
             action_name=ActionTypeEnum.GATHERING.value,
         )
 
     def crafting(self, item_name='', quantity=1):
+        """Start crafting items."""
+
         self._do_action(
             action_name=ActionTypeEnum.CRAFTING.value,
             action_data={
@@ -299,6 +334,8 @@ class Character(BaseClient):
         )
 
     def equip(self, item_name='', slot=''):
+        """Equip item."""
+
         self._do_action(
             action_name=ActionTypeEnum.EQUIP.value,
             action_data={
@@ -308,6 +345,8 @@ class Character(BaseClient):
         )
 
     def unequip(self, slot=''):
+        """Unequip slot."""
+
         self._do_action(
             action_name=ActionTypeEnum.UNEQUIP.value,
             action_data={
@@ -316,11 +355,15 @@ class Character(BaseClient):
         )
 
     def get_task(self):
+        """Get new quest."""
+
         self._do_action(
             action_name='task/new',
         )
 
     def complete_task(self):
+        """Complete the current quest."""
+
         self._do_action(
             action_name='task/complete',
         )

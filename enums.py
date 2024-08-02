@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class CharacterSkinsEnum(Enum):
+
     MEN1 = 'men1'
     MEN2 = 'men2'
     MEN3 = 'men3'
@@ -96,6 +97,7 @@ class ItemTypesEnum(Enum):
 
 
 class EquipmentSlotsEnum(Enum):
+
     WEAPON = 'weapon'
     SHIELD = 'shield'
     HELMET = 'helmet'
