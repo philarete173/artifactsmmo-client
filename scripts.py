@@ -42,6 +42,15 @@ class ScenariosStorage:
         if sell:
             self.sell_item('wooden_staff', quantity)
 
+    def craft_wooden_shield(self, quantity=1, sell=False):
+        self.craft_ash_planks(3 * quantity)
+
+        self.character.move(3, 1)
+        self.character.crafting('wooden_shield', quantity)
+
+        if sell:
+            self.sell_item('wooden_shield', quantity)
+
     def craft_copper_dagger(self, quantity=1, sell=False):
         self.craft_copper(3 * quantity)
 
@@ -51,6 +60,15 @@ class ScenariosStorage:
         if sell:
             self.sell_item('copper_dagger', quantity)
 
+    def craft_copper_helmet(self, quantity=1, sell=False):
+        self.craft_copper(3 * quantity)
+
+        self.character.move(3, 1)
+        self.character.crafting('copper_helmet', quantity)
+
+        if sell:
+            self.sell_item('copper_helmet', quantity)
+
     def craft_copper_boots(self, quantity=1, sell=False):
         self.craft_copper(3 * quantity)
 
@@ -59,3 +77,12 @@ class ScenariosStorage:
 
         if sell:
             self.sell_item('copper_boots', quantity)
+
+    def craft_copper_ring(self, quantity=1, sell=False):
+        self.craft_copper(4 * quantity)
+
+        self.character.move(1, 3)
+        self.character.crafting('copper_ring', quantity)
+
+        if sell:
+            self.sell_item('copper_ring', quantity)
