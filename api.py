@@ -1,4 +1,5 @@
 import configparser
+import inspect
 import random
 import re
 import sys
@@ -11,6 +12,7 @@ from enums import (
     ActionTypeEnum,
     EquipmentSlotsEnum,
 )
+from scripts import ScenariosStorage
 
 
 class BaseClient:
@@ -64,6 +66,7 @@ class GameClient(BaseClient):
         """User interaction in an infinite loop."""
 
         character = self.select_character()
+        scenarios_storage = ScenariosStorage(character)
 
         while True:
             available_actions = {
@@ -135,6 +138,43 @@ class GameClient(BaseClient):
 
             elif current_action == ActionTypeEnum.COMPLETE_TASK.value:
                 character.complete_task()
+
+            elif current_action == ActionTypeEnum.BUY_ITEM.value:
+                item_name = input('What item do you want to buy?: ')
+                quantity = int(input('Нow many do you want to buy?: '))
+
+                character.buy_item(item_name, quantity)
+
+            elif current_action == ActionTypeEnum.SELL_ITEM.value:
+                item_name = input('What item do you want to sell?: ')
+                quantity = int(input('Нow many do you want to sell?: '))
+
+                character.sell_item(item_name, quantity)
+
+            elif current_action == ActionTypeEnum.USE_SCENARIO.value:
+                scenarios_map = dict(
+                    (method_name.replace('_', ' '), method)
+                    for method_name, method in inspect.getmembers(scenarios_storage)
+                    if not method_name.startswith('__') and inspect.ismethod(method)
+                )
+                scenarios_idx_map = {
+                    idx: method_name for idx, method_name in enumerate(scenarios_map.keys(), 1)
+                }
+                scenarios_str = "\n".join(f"{idx} - {name}" for idx, name in scenarios_idx_map.items())
+
+                scenario_idx_select = int(input(
+                    'Which scenario do you want to launch?\n'
+                    f'{scenarios_str}\n'
+                    'Please type a number: '
+                ))
+                selected_scenario = scenarios_map[scenarios_idx_map[scenario_idx_select]]
+                params = {}
+                print('Specify the values of the scenario startup parameters')
+                for name, parameter in dict(inspect.signature(selected_scenario).parameters).items():
+                    parameter_type = type(parameter.default)
+                    params[name] = parameter_type(input(f'{name} (default: {parameter.default}): '))
+
+                selected_scenario(**params)
 
             else:
                 print('This is not a valid action!')
@@ -367,3 +407,49 @@ class Character(BaseClient):
         self._do_action(
             action_name='task/complete',
         )
+
+    def _get_item_data(self, item_name=''):
+        """Get item data."""
+
+        item_data = self._get(
+            url=f'/items/{item_name}',
+        )
+
+        if item_data.status_code == 200:
+            result = item_data.json()
+        else:
+            result = {}
+
+        return result
+
+    def buy_item(self, item_name='', quantity=1):
+        """Buy an item from General Exchange."""
+
+        item_data = self._get_item_data(item_name)
+        current_price = item_data.get('data', {}).get('ge', {}).get('buy_price', 0)
+
+        if current_price:
+            self._do_action(
+                action_name='ge/buy',
+                action_data={
+                    'code': item_name,
+                    'quantity': quantity,
+                    'price': current_price,
+                }
+            )
+
+    def sell_item(self, item_name='', quantity=1):
+        """Sell an item to General Exchange."""
+
+        item_data = self._get_item_data(item_name)
+        current_price = item_data.get('data', {}).get('ge', {}).get('sell_price', 0)
+
+        if current_price:
+            self._do_action(
+                action_name='ge/sell',
+                action_data={
+                    'code': item_name,
+                    'quantity': quantity,
+                    'price': current_price,
+                }
+            )

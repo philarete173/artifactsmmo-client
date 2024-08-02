@@ -48,6 +48,10 @@ class ActionTypeEnum(Enum):
     DELETE = 'delete'
     NEW_TASK = 'new task'
     COMPLETE_TASK = 'complete task'
+    BUY_ITEM = 'buy item'
+    SELL_ITEM = 'sell item'
+
+    USE_SCENARIO = 'use scenario'
 
     AVAILABLE_ACTIONS = [
         MOVE,
@@ -58,6 +62,9 @@ class ActionTypeEnum(Enum):
         UNEQUIP,
         NEW_TASK,
         COMPLETE_TASK,
+        BUY_ITEM,
+        SELL_ITEM,
+        USE_SCENARIO,
     ]
 
 
