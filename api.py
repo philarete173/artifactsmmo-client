@@ -11,8 +11,11 @@ from enums import (
     CharacterSexEnum,
     ActionTypeEnum,
     EquipmentSlotsEnum,
+    MapTypesEnum,
 )
-from scripts import ScenariosStorage
+from scripts import (
+    ScenariosStorage,
+)
 
 
 class BaseClient:
@@ -39,19 +42,12 @@ class BaseClient:
     def _post(self, url='', data=None):
         """Send POST request."""
 
-        return self._do_request(method='post', url=url, data=data)
+        return requests.post(url=self.base_url + url, json=data or {}, headers=self.base_headers)
 
     def _get(self, url='', data=None):
         """Send GET request."""
 
-        return self._do_request(method='get', url=url, data=data)
-
-    def _do_request(self, method='get', url='', data=None):
-        """Send request to game."""
-
-        request = requests.request(method, self.base_url + url, json=data, headers=self.base_headers)
-
-        return request
+        return requests.get(url=self.base_url + url, params=data or {}, headers=self.base_headers)
 
 
 class GameClient(BaseClient):
@@ -60,19 +56,32 @@ class GameClient(BaseClient):
     def __init__(self):
         super().__init__()
 
+        self.main_menu_map = {
+            ActionTypeEnum.MOVE.value: self.character_movement,
+            ActionTypeEnum.FIGHT.value: self.character_fight,
+            ActionTypeEnum.GATHERING.value: self.character_gathering,
+            ActionTypeEnum.CRAFTING.value: self.character_crafting,
+            ActionTypeEnum.EQUIP.value: self.character_equip,
+            ActionTypeEnum.UNEQUIP.value: self.character_unequip,
+            ActionTypeEnum.NEW_TASK.value: self.character_get_new_task,
+            ActionTypeEnum.COMPLETE_TASK.value: self.character_complete_task,
+            ActionTypeEnum.BUY_ITEM.value: self.character_buy_item,
+            ActionTypeEnum.SELL_ITEM.value: self.character_sell_item,
+            ActionTypeEnum.USE_SCENARIO.value: self.use_scenario,
+        }
+
         self.check_server_status()
+
+        self.character = self.select_character()
+        self.scenarios_storage = ScenariosStorage(self.character)
 
     def main_loop(self):
         """User interaction in an infinite loop."""
 
-        character = self.select_character()
-        scenarios_storage = ScenariosStorage(character)
-
         while True:
-            available_actions = {
-                idx: action for idx, action in enumerate(ActionTypeEnum.AVAILABLE_ACTIONS.value, 1)
-            }
-            available_actions_str = "\n".join(f"{idx} - {name}" for idx, name in available_actions.items())
+            available_actions, available_actions_str = self._prepare_actions_menu_data(
+                ActionTypeEnum.AVAILABLE_ACTIONS.value,
+            )
             try:
                 current_action_idx = int(input(
                     'What do you want to do?\n'
@@ -84,98 +93,13 @@ class GameClient(BaseClient):
                 print('Invalid input. Please try again.')
                 continue
 
-            if current_action == ActionTypeEnum.MOVE.value:
-                print('Where do you want to move?')
-                x = int(input('X: '))
-                y = int(input('Y: '))
+            current_action_method = self.main_menu_map.get(current_action)
 
-                character.move(x, y)
-            elif current_action == ActionTypeEnum.FIGHT.value:
-                count = input('How many times to fight?: ')
-                for _ in range(int(count)):
-                    character.fight()
-
-            elif current_action == ActionTypeEnum.GATHERING.value:
-                count = input('How many times to gather?: ')
-                for _ in range(int(count)):
-                    character.gathering()
-
-            elif current_action == ActionTypeEnum.CRAFTING.value:
-                craft_name = input('What item do you want to craft?: ')
-                quantity = int(input('Нow many do you want to create?: '))
-
-                character.crafting(craft_name, quantity)
-
-            elif current_action in [ActionTypeEnum.EQUIP.value, ActionTypeEnum.UNEQUIP.value]:
-                slots_map = {
-                    idx: action.value for idx, action in enumerate(EquipmentSlotsEnum, 1)
-                }
-                slots_map_str = "\n".join(f"{idx} - {name}" for idx, name in slots_map.items())
-
-                if current_action == ActionTypeEnum.EQUIP.value:
-                    item_name = input('What item do you want to equip?: ')
-
-                    slot_idx = int(input(
-                        'Which slot do you want to equip the item in?\n'
-                        f'{slots_map_str}\n'
-                        'Please type a number: '
-                    ))
-                    slot = slots_map[slot_idx]
-                    character.equip(item_name, slot)
-
-                elif current_action == ActionTypeEnum.UNEQUIP.value:
-                    slot_idx = int(input(
-                        'Which slot do you want to unequip?\n'
-                        f'{slots_map_str}\n'
-                        'Please type a number: '
-                    ))
-                    slot = slots_map[slot_idx]
-
-                    character.unequip(slot)
-
-            elif current_action == ActionTypeEnum.NEW_TASK.value:
-                character.get_task()
-
-            elif current_action == ActionTypeEnum.COMPLETE_TASK.value:
-                character.complete_task()
-
-            elif current_action == ActionTypeEnum.BUY_ITEM.value:
-                item_name = input('What item do you want to buy?: ')
-                quantity = int(input('Нow many do you want to buy?: '))
-
-                character.buy_item(item_name, quantity)
-
-            elif current_action == ActionTypeEnum.SELL_ITEM.value:
-                item_name = input('What item do you want to sell?: ')
-                quantity = int(input('Нow many do you want to sell?: '))
-
-                character.sell_item(item_name, quantity)
-
-            elif current_action == ActionTypeEnum.USE_SCENARIO.value:
-                scenarios_map = dict(
-                    (method_name.replace('_', ' '), method)
-                    for method_name, method in inspect.getmembers(scenarios_storage)
-                    if not method_name.startswith('__') and inspect.ismethod(method)
-                )
-                scenarios_idx_map = {
-                    idx: method_name for idx, method_name in enumerate(scenarios_map.keys(), 1)
-                }
-                scenarios_str = "\n".join(f"{idx} - {name}" for idx, name in scenarios_idx_map.items())
-
-                scenario_idx_select = int(input(
-                    'Which scenario do you want to launch?\n'
-                    f'{scenarios_str}\n'
-                    'Please type a number: '
-                ))
-                selected_scenario = scenarios_map[scenarios_idx_map[scenario_idx_select]]
-                params = {}
-                print('Specify the values of the scenario startup parameters')
-                for name, parameter in dict(inspect.signature(selected_scenario).parameters).items():
-                    parameter_type = type(parameter.default)
-                    params[name] = parameter_type(input(f'{name} (default: {parameter.default}): '))
-
-                selected_scenario(**params)
-
+            if current_action_method:
+                try:
+                    current_action_method()
+                except Exception as error:
+                    print('Something went wrong. Plaease try again.')
             else:
                 print('This is not a valid action!')
 
@@ -185,10 +109,12 @@ class GameClient(BaseClient):
         """Selecting a character from the list on the account."""
 
         characters = self.get_characters_list()
-        characters_map = {idx: name for idx, name in enumerate([character["name"] for character in characters], 1)}
+
+        characters_map, characters_map_string = self._prepare_actions_menu_data(
+            [character["name"] for character in characters],
+        )
         print(f'Characters on account: {", ".join(characters_map.values())}')
 
-        characters_map_string = "\n".join(f"{idx} - {name}" for idx, name in characters_map.items())
         character_selected = False
         while not character_selected:
             character_select = input(
@@ -276,6 +202,210 @@ class GameClient(BaseClient):
 
             return character_created
 
+    def _prepare_actions_menu_data(self, iterable):
+        """"""
+        items_map = {
+            idx: item for idx, item in enumerate(iterable, 1)
+        }
+        items_map_str = "\n".join(f"{idx} - {name}" for idx, name in items_map.items())
+
+        return items_map, items_map_str
+
+    def character_movement(self):
+        print('Where do you want to move?')
+        x = int(input('X: '))
+        y = int(input('Y: '))
+
+        self.character.move(x, y)
+
+    def character_fight(self):
+        count = input('How many times to fight?: ')
+        for _ in range(int(count)):
+            self.character.fight()
+
+    def character_gathering(self):
+        count = input('How many times to gather?: ')
+        for _ in range(int(count)):
+            self.character.gathering()
+
+    def character_crafting(self):
+        location_data = self.get_location_data(self.character.x, self.character.y)
+
+        if location_data.get('content') and location_data['content']['type'] == MapTypesEnum.WORKSHOP.value:
+            workshop_type = location_data['content']['code']
+            items_list = self.get_crafting_list(
+                craft_skill=workshop_type,
+                skill_level=getattr(self.character, f'{workshop_type}_level', 1),
+            )
+            items_map, items_map_str = self._prepare_actions_menu_data(
+                [item['name'] for item in items_list],
+            )
+            craft_idx = int(input(
+                'What item do you want to craft?\n'
+                f'{items_map_str}\n'
+                'Please type a number: '
+            ))
+
+            craft_name = next(
+                filter(
+                    lambda item: item['name'] == items_map[craft_idx],
+                    items_list,
+                ),
+                {},
+            ).get(
+                'code',
+                '',
+            )
+            quantity = int(input('Нow many do you want to create?: '))
+
+            self.character.crafting(craft_name, quantity)
+        else:
+            print('You can\'t craft anything at this location.')
+
+    def character_equip(self):
+        item_name = input('What item do you want to equip?: ')
+
+        slots_map, slots_map_str = self._prepare_actions_menu_data([action.value for action in EquipmentSlotsEnum])
+        slot_idx = int(input(
+            'Which slot do you want to equip the item in?\n'
+            f'{slots_map_str}\n'
+            'Please type a number: '
+        ))
+        slot = slots_map[slot_idx]
+
+        self.character.equip(item_name, slot)
+
+    def character_unequip(self):
+        slots_map, slots_map_str = self._prepare_actions_menu_data([action.value for action in EquipmentSlotsEnum])
+        slot_idx = int(input(
+            'Which slot do you want to unequip?\n'
+            f'{slots_map_str}\n'
+            'Please type a number: '
+        ))
+        slot = slots_map[slot_idx]
+
+        self.character.unequip(slot)
+
+    def character_get_new_task(self):
+        self.character.get_task()
+
+    def character_complete_task(self):
+        self.character.complete_task()
+
+    def character_buy_item(self):
+        item_name = input('What item do you want to buy?: ')
+        quantity = int(input('Нow many do you want to buy?: '))
+
+        self.character.buy_item(item_name, quantity)
+
+    def character_sell_item(self):
+        item_name = input('What item do you want to sell?: ')
+        quantity = int(input('Нow many do you want to sell?: '))
+
+        self.character.sell_item(item_name, quantity)
+
+    def use_scenario(self):
+        scenarios_map = dict(
+            (method_name.replace('_', ' '), method)
+            for method_name, method in inspect.getmembers(self.scenarios_storage)
+            if not method_name.startswith('__') and inspect.ismethod(method)
+        )
+        scenarios_idx_map = {
+            idx: method_name for idx, method_name in enumerate(scenarios_map.keys(), 1)
+        }
+        scenarios_str = "\n".join(f"{idx} - {name}" for idx, name in scenarios_idx_map.items())
+
+        scenario_idx_select = int(input(
+            'Which scenario do you want to launch?\n'
+            f'{scenarios_str}\n'
+            'Please type a number: '
+        ))
+        selected_scenario = scenarios_map[scenarios_idx_map[scenario_idx_select]]
+        params = {}
+        print('Specify the values of the scenario startup parameters')
+        for name, parameter in dict(inspect.signature(selected_scenario).parameters).items():
+            parameter_type = type(parameter.default)
+            params[name] = parameter_type(input(f'{name} (default: {parameter.default}): '))
+
+        repeats = int(input('How many times to repeat the scenario?: '))
+
+        for _ in range(repeats):
+            selected_scenario(**params)
+
+    def get_location_data(self, x=0, y=0):
+        """Get data about location."""
+
+        location_data = self._get(
+            url=f'/maps/{x}/{y}',
+        )
+
+        if location_data.status_code == 200:
+            result = location_data.json().get('data', {})
+        else:
+            print(location_data.json()['error']['message'])
+            result = {}
+
+        return result
+
+    def get_maps_data(self, map_type=''):
+        """Get list of maps by content type."""
+
+        maps_data = self._get(
+            url='/maps',
+            data={
+                'content_type': map_type,
+            }
+        )
+
+        if maps_data.status_code == 200:
+            result = maps_data.json().get('data', [])
+            if total_pages := maps_data.json().get('pages', 1) > 1:
+                for page in range(2, total_pages + 1):
+                    maps_data = self._get(
+                        url='/maps',
+                        data={
+                            'content_type': map_type,
+                            'page': page,
+                        }
+                    )
+                    result.extend(maps_data.json().get('data', []))
+        else:
+            print(maps_data.json()['error']['message'])
+            result = []
+
+        return result
+
+    def get_crafting_list(self, craft_skill='', skill_level=1):
+        """Get items that you can craft with your current skill level."""
+
+        items_data = self._get(
+            url='/items',
+            data={
+                'craft_skill': craft_skill,
+                'max_level': skill_level,
+            }
+        )
+
+        if items_data.status_code == 200:
+            result = items_data.json().get('data', [])
+            total_pages = items_data.json().get('pages', 1)
+            if total_pages > 1:
+                for page in range(2, total_pages + 1):
+                    items_data = self._get(
+                        url='/maps',
+                        data={
+                            'craft_skill': craft_skill,
+                            'max_level': skill_level,
+                            'page': page,
+                        }
+                    )
+                    result.extend(items_data.json().get('data', []))
+        else:
+            print(items_data.json()['error']['message'])
+            result = []
+
+        return result
+
 
 class Character(BaseClient):
     """Client for character interaction."""
@@ -290,8 +420,8 @@ class Character(BaseClient):
     def _get_character_info(self):
         """Getting all character data and storing in instance."""
 
-        character_info_request = requests.get(
-            url=f'{self.base_url}/characters/{self.name}'
+        character_info_request = self._get(
+            url=f'/characters/{self.name}'
         )
 
         if character_info_request.status_code == 200:
@@ -312,6 +442,8 @@ class Character(BaseClient):
             print(last_action_data.json()['data'][0]['description'])
         elif error_block := last_action_data.json().get('error'):
             print(f'Can\'t get last action. {error_block["message"]}.')
+
+        self._get_character_info()
 
     def _do_action(self, action_name='', action_data=None):
         """General method for sending an action request."""
