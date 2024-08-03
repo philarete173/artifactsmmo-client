@@ -50,7 +50,8 @@ Server status is "online".
 Welcome to Artifacts Alpha 1. The server is up.
 ```
 
-Further interaction is realized by selecting the required menu item and transferring the necessary data for sending requests
+Further interaction is realized by selecting the required menu item and transferring the necessary data for sending requests.
+The list of available actions depends on the type of location the character is currently in.
 
 ```
 What do you want to do?
