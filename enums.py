@@ -36,6 +36,16 @@ class CharacterSexEnum(Enum):
     }
 
 
+class MapTypesEnum(Enum):
+
+    MONSTER = 'monster'
+    RESOURCE = 'resource'
+    WORKSHOP = 'workshop'
+    BANK = 'bank'
+    GRAND_EXCHANGE = 'grand_exchange'
+    TASKS_MASTER = 'tasks_master'
+
+
 class ActionTypeEnum(Enum):
 
     MOVE = 'move'
@@ -67,15 +77,57 @@ class ActionTypeEnum(Enum):
         USE_SCENARIO,
     ]
 
-
-class MapTypesEnum(Enum):
-
-    MONSTER = 'monster'
-    RESOURCE = 'resource'
-    WORKSHOP = 'workshop'
-    BANK = 'bank'
-    GRAND_EXCHANGE = 'grand_exchange'
-    TASKS_MASTER = 'tasks_master'
+    LOCATION_ACTIONS_MAP = {
+        None: [
+            MOVE,
+            EQUIP,
+            UNEQUIP,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.MONSTER.value: [
+            MOVE,
+            FIGHT,
+            EQUIP,
+            UNEQUIP,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.RESOURCE.value: [
+            MOVE,
+            GATHERING,
+            EQUIP,
+            UNEQUIP,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.WORKSHOP.value: [
+            MOVE,
+            CRAFTING,
+            EQUIP,
+            UNEQUIP,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.BANK.value: [
+            MOVE,
+            EQUIP,
+            UNEQUIP,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.GRAND_EXCHANGE.value: [
+            MOVE,
+            EQUIP,
+            UNEQUIP,
+            BUY_ITEM,
+            SELL_ITEM,
+            USE_SCENARIO,
+        ],
+        MapTypesEnum.TASKS_MASTER.value: [
+            MOVE,
+            EQUIP,
+            UNEQUIP,
+            NEW_TASK,
+            COMPLETE_TASK,
+            USE_SCENARIO,
+        ],
+    }
 
 
 class CraftSkillEnum(Enum):
