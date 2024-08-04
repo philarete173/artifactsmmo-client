@@ -435,7 +435,7 @@ class Character(BaseClient):
         """Getting info about last action from character log."""
 
         last_action_data = self._get(
-            url=f'/my/{self.name}/logs',
+            url=f'/my/logs',
             data={
                 'page': 1,
                 'size': 1,
