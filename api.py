@@ -207,19 +207,38 @@ class GameClient(BaseClient):
 
     def _prepare_actions_menu_data(self, iterable):
         """"""
-        items_map = {
-            idx: item for idx, item in enumerate(iterable, 1)
-        }
-        items_map_str = "\n".join(f"{idx} - {name}" for idx, name in items_map.items())
+        items_map = {idx: item for idx, item in enumerate(iterable, 1)}
+        items_map_str = "\n".join(f"{idx} - {name.capitalize().replace('_', ' ')}" for idx, name in items_map.items())
 
         return items_map, items_map_str
 
     def character_movement(self):
-        print('Where do you want to move?')
-        x = int(input('X: '))
-        y = int(input('Y: '))
+        locations_type_map, locations_type_str = self._prepare_actions_menu_data(
+            [element.value for element in MapTypesEnum],
+        )
+        location_type_idx = int(input(
+            'What type of location you want to move to?\n'
+            f'{locations_type_str}\n'
+            'Please type a number: '
+        ))
+        chosen_loction_type = locations_type_map[location_type_idx]
+        chosen_location_type_maps_list = self.get_maps_data(chosen_loction_type)
+        chosen_location_type_maps, chosen_location_type_str = self._prepare_actions_menu_data(
+            sorted({map_data.get('content', {}).get('code', '') for map_data in chosen_location_type_maps_list})
+        )
+        chosen_location_idx = int(input(
+            'Where do you want to move?\n'
+            f'{chosen_location_type_str}\n'
+            'Please type a number: '
+        ))
+        chosen_location = next(
+            filter(
+                lambda map_data: map_data['content']['code'] == chosen_location_type_maps[chosen_location_idx],
+                chosen_location_type_maps_list,
+            )
+        )
 
-        self.character.move(x, y)
+        self.character.move(chosen_location['x'], chosen_location['y'])
 
     def character_fight(self):
         count = input('How many times to fight?: ')
