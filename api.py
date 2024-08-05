@@ -332,10 +332,7 @@ class GameClient(BaseClient):
             for method_name, method in inspect.getmembers(self.scenarios_storage)
             if not method_name.startswith('__') and inspect.ismethod(method)
         )
-        scenarios_idx_map = {
-            idx: method_name for idx, method_name in enumerate(scenarios_map.keys(), 1)
-        }
-        scenarios_str = "\n".join(f"{idx} - {name}" for idx, name in scenarios_idx_map.items())
+        scenarios_idx_map, scenarios_str = self._prepare_actions_menu_data(scenarios_map.keys())
 
         scenario_idx_select = int(input(
             'Which scenario do you want to launch?\n'
