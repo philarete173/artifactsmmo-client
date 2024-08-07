@@ -102,7 +102,7 @@ class GameClient(BaseClient):
                 try:
                     current_action_method()
                 except Exception as error:
-                    print('Something went wrong. Plaease try again.')
+                    print(f'Something went wrong. Error: {error}.  Plaease try again.')
             else:
                 print('This is not a valid action!')
 
@@ -226,11 +226,16 @@ class GameClient(BaseClient):
         chosen_location_type_maps, chosen_location_type_str = self._prepare_actions_menu_data(
             sorted({map_data.get('content', {}).get('code', '') for map_data in chosen_location_type_maps_list})
         )
-        chosen_location_idx = int(input(
-            'Where do you want to move?\n'
-            f'{chosen_location_type_str}\n'
-            'Please type a number: '
-        ))
+        if len(chosen_location_type_maps) > 1:
+            chosen_location_idx = int(input(
+                'Where do you want to move?\n'
+                f'{chosen_location_type_str}\n'
+                'Please type a number: '
+            ))
+
+        else:
+            chosen_location_idx = 1
+
         chosen_location = next(
             filter(
                 lambda map_data: map_data['content']['code'] == chosen_location_type_maps[chosen_location_idx],
@@ -321,8 +326,23 @@ class GameClient(BaseClient):
         self.character.buy_item(item_name, quantity)
 
     def character_sell_item(self):
-        item_name = input('What item do you want to sell?: ')
-        quantity = int(input('Нow many do you want to sell?: '))
+        items_map, items_map_str = self._prepare_actions_menu_data(
+            [item['code'] for item in self.character.inventory if item['quantity']]
+        )
+        item_idx = int(input(
+            'What item do you want to sell?\n'
+            f'{items_map_str}\n'
+            'Please type a number: '
+        ))
+        item_name = items_map[item_idx]
+        inventory_quantity = next(
+            filter(
+                lambda item: item['code'] == item_name,
+                self.character.inventory,
+            ),
+            {},
+        ).get('quantity', 0)
+        quantity = int(input(f'Нow many do you want to sell (You have {inventory_quantity})?: '))
 
         self.character.sell_item(item_name, quantity)
 
