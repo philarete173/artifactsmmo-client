@@ -445,6 +445,36 @@ class GameClient(BaseClient):
 
         return result
 
+    def get_items_by_type(self, item_type=''):
+        """Get list of items by type."""
+
+        items_data = self._get(
+            url='/items',
+            data={
+                'type': item_type,
+            }
+        )
+
+        if items_data.status_code == 200:
+            result = items_data.json().get('data', [])
+            total_pages = items_data.json().get('pages', 1)
+            if total_pages > 1:
+                for page in range(2, total_pages + 1):
+                    items_data = self._get(
+                        url='/maps',
+                        data={
+                            'type': item_type,
+                            'page': page,
+                        }
+                    )
+                    result.extend(items_data.json().get('data', []))
+        else:
+            print(items_data.json()['error']['message'])
+            result = []
+
+        return result
+
+
 
 class Character(BaseClient):
     """Client for character interaction."""
