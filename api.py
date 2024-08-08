@@ -5,8 +5,7 @@ import re
 import sys
 from time import sleep
 
-import requests
-
+from base import BaseClient
 from enums import (
     CharacterSexEnum,
     ActionTypeEnum,
@@ -19,18 +18,17 @@ from scripts import (
 )
 
 
-class BaseClient:
-    """Basic client for sending requests."""
+class BaseGameClient(BaseClient):
+    """Basic client for sending requests with authorization token."""
 
     def __init__(self):
-        self.base_url = "https://api.artifactsmmo.com"
+        super().__init__()
+
         self.config = self._get_config()
 
-        self.base_headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
+        self.base_headers.update({
             "Authorization": f"Bearer {self.config.get('General', 'TOKEN')}"
-        }
+        })
 
     def _get_config(self):
         """Open config file."""
@@ -40,18 +38,8 @@ class BaseClient:
 
         return config
 
-    def _post(self, url='', data=None):
-        """Send POST request."""
 
-        return requests.post(url=self.base_url + url, json=data or {}, headers=self.base_headers)
-
-    def _get(self, url='', data=None):
-        """Send GET request."""
-
-        return requests.get(url=self.base_url + url, params=data or {}, headers=self.base_headers)
-
-
-class GameClient(BaseClient):
+class GameClient(BaseGameClient):
     """Client for interacting with the game world."""
 
     def __init__(self):
@@ -620,7 +608,7 @@ class GameClient(BaseClient):
         return gold_quantity
 
 
-class Character(BaseClient):
+class Character(BaseGameClient):
     """Client for character interaction."""
 
     def __init__(self, name) -> None:
