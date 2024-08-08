@@ -1,4 +1,7 @@
-class ScenariosStorage:
+from base import BaseClient
+
+
+class ScenariosStorage(BaseClient):
     """Class for storing scenarios for character automation."""
 
     GATHER_RESOURCES_CATEGORY = 'Gather resources'
@@ -6,6 +9,8 @@ class ScenariosStorage:
     CRAFT_ITEMS_CATEGORY = 'Craft items'
 
     def __init__(self, character):
+        super().__init__()
+
         self.character = character
 
         self.scenarios_category_map = {
@@ -17,6 +22,7 @@ class ScenariosStorage:
                 self.gather_ash_wood,
                 self.gather_spruce_wood,
                 self.gather_birch_wood,
+                self.gather_resource_from_monsters,
             ],
             self.CRAFT_RESOURCES_CATEGORY: [
                 self.craft_copper,
@@ -97,6 +103,45 @@ class ScenariosStorage:
         self.character.move(2, 6)
         for _ in range(quantity):
             self.character.gathering()
+
+    def gather_resource_from_monsters(self, item_code, quantity=1):
+        monster_data = self._get(
+            url='/monsters',
+            data={
+                'drop': item_code,
+                'size': 1,
+            }
+        )
+
+        if monster_data.status_code == 200:
+            monster_code = monster_data.json()['data'][0]['code']
+
+            location_data = self._get(
+                url='/maps',
+                data={
+                    'content_code': monster_code,
+                    'size': 1,
+                }
+            )
+
+            if location_data.status_code == 200:
+                location = location_data.json()['data'][0]
+
+                self.character.move(location['x'], location['y'])
+
+                while next(
+                        filter(
+                            lambda item: item['code'] == item_code,
+                            self.character.inventory),
+                        {},
+                ).get('quantity', 0) < quantity:
+                    self.character.fight()
+
+            elif error_block := location_data.json().get('error'):
+                print(f'Can\'t get location data. {error_block["message"]}.')
+
+        elif error_block := monster_data.json().get('error'):
+            print(f'Can\'t get monster data. {error_block["message"]}.')
 
     def craft_copper(self, quantity=1):
         self.gather_copper_ore(6 * quantity)
