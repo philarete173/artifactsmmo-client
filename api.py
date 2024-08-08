@@ -12,6 +12,7 @@ from enums import (
     ActionTypeEnum,
     EquipmentSlotsEnum,
     MapTypesEnum,
+    ItemTypesEnum,
 )
 from scripts import (
     ScenariosStorage,
@@ -65,8 +66,13 @@ class GameClient(BaseClient):
             ActionTypeEnum.UNEQUIP.value: self.character_unequip,
             ActionTypeEnum.NEW_TASK.value: self.character_get_new_task,
             ActionTypeEnum.COMPLETE_TASK.value: self.character_complete_task,
+            ActionTypeEnum.EXCHANGE_TASK.value: self.character_exchange_task_coins,
             ActionTypeEnum.BUY_ITEM.value: self.character_buy_item,
             ActionTypeEnum.SELL_ITEM.value: self.character_sell_item,
+            ActionTypeEnum.DEPOSIT_BANK.value: self.character_deposit_item_to_bank,
+            ActionTypeEnum.DEPOSIT_BANK_GOLD.value: self.character_deposit_gold_to_bank,
+            ActionTypeEnum.WITHDRAW_BANK.value: self.character_withdraw_item_from_bank,
+            ActionTypeEnum.WITHDRAW_GOLD.value: self.character_withdraw_gold_from_bank,
             ActionTypeEnum.USE_SCENARIO.value: self.use_scenario,
         }
 
@@ -221,8 +227,8 @@ class GameClient(BaseClient):
             f'{locations_type_str}\n'
             'Please type a number: '
         ))
-        chosen_loction_type = locations_type_map[location_type_idx]
-        chosen_location_type_maps_list = self.get_maps_data(chosen_loction_type)
+        chosen_location_type = locations_type_map[location_type_idx]
+        chosen_location_type_maps_list = self.get_maps_data(chosen_location_type)
         chosen_location_type_maps, chosen_location_type_str = self._prepare_actions_menu_data(
             sorted({map_data.get('content', {}).get('code', '') for map_data in chosen_location_type_maps_list})
         )
@@ -290,17 +296,28 @@ class GameClient(BaseClient):
             print('You can\'t craft anything at this location.')
 
     def character_equip(self):
-        item_name = input('What item do you want to equip?: ')
-
-        slots_map, slots_map_str = self._prepare_actions_menu_data([action.value for action in EquipmentSlotsEnum])
-        slot_idx = int(input(
-            'Which slot do you want to equip the item in?\n'
-            f'{slots_map_str}\n'
+        inventory_map, inventory_map_str = self._prepare_actions_menu_data(
+            [item['code'] for item in self.character.inventory if item['code']]
+        )
+        chosen_item_idx = int(input(
+            'What item do you want to equip?\n'
+            f'{inventory_map_str}\n'
             'Please type a number: '
         ))
-        slot = slots_map[slot_idx]
 
-        self.character.equip(item_name, slot)
+        item_data = self.get_item_by_code(inventory_map[chosen_item_idx])
+        if item_data['type'] in ItemTypesEnum.EQUIP_TYPES.value and item_data['level'] <= self.character.level:
+            equipment_slot = next(
+                filter(
+                    lambda item: item_data['type'] == item.value or item.value.startswith(item_data['type']),
+                    EquipmentSlotsEnum,
+                )
+            )
+            if equipment_slot:
+                self.character.equip(item_data['code'], equipment_slot.value)
+
+        else:
+            print('You can\'t equip this item.')
 
     def character_unequip(self):
         slots_map, slots_map_str = self._prepare_actions_menu_data([action.value for action in EquipmentSlotsEnum])
@@ -318,6 +335,9 @@ class GameClient(BaseClient):
 
     def character_complete_task(self):
         self.character.complete_task()
+
+    def character_exchange_task_coins(self):
+        self.character.exchange_task_coins()
 
     def character_buy_item(self):
         item_name = input('What item do you want to buy?: ')
@@ -346,27 +366,98 @@ class GameClient(BaseClient):
 
         self.character.sell_item(item_name, quantity)
 
-    def use_scenario(self):
-        scenarios_map = dict(
-            (method_name.replace('_', ' '), method)
-            for method_name, method in inspect.getmembers(self.scenarios_storage)
-            if not method_name.startswith('__') and inspect.ismethod(method)
+    def character_deposit_item_to_bank(self):
+        inventory_map, inventory_map_str = self._prepare_actions_menu_data(
+            [item['code'] for item in self.character.inventory if item['code']]
         )
-        scenarios_idx_map, scenarios_str = self._prepare_actions_menu_data(scenarios_map.keys())
+        chosen_item_idx = int(input(
+            'What item do you want to deposit?\n'
+            f'{inventory_map_str}\n'
+            'Please type a number: '
+        ))
+
+        item_code = inventory_map[chosen_item_idx]
+        inventory_quantity = next(
+            filter(
+                lambda item: item['code'] == item_code,
+                self.character.inventory,
+            ),
+            {},
+        ).get('quantity', 0)
+        quantity = int(input(f'Нow many do you want to deposit (You have {inventory_quantity})?: '))
+
+        self.character.deposit_item(item_code, quantity)
+
+    def character_withdraw_item_from_bank(self):
+        bank_items_data = self.get_bank_items()
+        bank_items_map, bank_items_map_str = self._prepare_actions_menu_data(
+            [item['code'] for item in bank_items_data]
+        )
+
+        chosen_item_idx = int(input(
+            'What item do you want to withdraw?\n'
+            f'{bank_items_map_str}\n'
+            'Please type a number: '
+        ))
+
+        item_code = bank_items_map[chosen_item_idx]
+        inventory_quantity = next(
+            filter(
+                lambda item: item['code'] == item_code,
+                bank_items_data,
+            ),
+            {},
+        ).get('quantity', 0)
+        quantity = int(input(f'Нow many do you want to withdraw (The bank holds {inventory_quantity})?: '))
+
+        self.character.withdraw_item(item_code, quantity)
+
+    def character_deposit_gold_to_bank(self):
+        quantity = int(input(f'How many gold do you want to deposit (You have {self.character.gold})?: '))
+
+        self.character.deposit_gold(quantity)
+
+    def character_withdraw_gold_from_bank(self):
+        quantity = int(input(f'How many gold do you want to withdraw (The bank holds {self.get_bank_gold()})?: '))
+
+        self.character.withdraw_gold(quantity)
+
+    def use_scenario(self):
+
+        scenarios_category_map, scenarios_category_str = self._prepare_actions_menu_data(
+            self.scenarios_storage.scenarios_category_map.keys(),
+        )
+
+        scenario_category_idx_select = int(input(
+            'Which type of scenario do you want to launch?\n'
+            f'{scenarios_category_str}\n'
+            'Please type a number: '
+        ))
+        category_scenarios = self.scenarios_storage.scenarios_category_map[scenarios_category_map[scenario_category_idx_select]]
+        scenarios_map, scenarios_map_str = self._prepare_actions_menu_data([scenario.__name__ for scenario in category_scenarios])
 
         scenario_idx_select = int(input(
             'Which scenario do you want to launch?\n'
-            f'{scenarios_str}\n'
+            f'{scenarios_map_str}\n'
             'Please type a number: '
         ))
-        selected_scenario = scenarios_map[scenarios_idx_map[scenario_idx_select]]
+
+        selected_scenario = next(
+            filter(
+                lambda scenario: scenario.__name__ == scenarios_map[scenario_idx_select],
+                category_scenarios,
+            )
+        )
         params = {}
         print('Specify the values of the scenario startup parameters')
         for name, parameter in dict(inspect.signature(selected_scenario).parameters).items():
             parameter_type = type(parameter.default)
             params[name] = parameter_type(input(f'{name} (default: {parameter.default}): '))
 
-        repeats = int(input('How many times to repeat the scenario?: '))
+        if scenarios_category_map[scenario_category_idx_select] == ScenariosStorage.CRAFT_ITEMS_CATEGORY:
+            repeats = int(input('How many times to repeat the scenario?: '))
+        else:
+            repeats = 1
 
         for _ in range(repeats):
             selected_scenario(**params)
@@ -461,7 +552,7 @@ class GameClient(BaseClient):
             if total_pages > 1:
                 for page in range(2, total_pages + 1):
                     items_data = self._get(
-                        url='/maps',
+                        url='/items',
                         data={
                             'type': item_type,
                             'page': page,
@@ -474,6 +565,59 @@ class GameClient(BaseClient):
 
         return result
 
+    def get_item_by_code(self, item_code=''):
+        """Get item by it code."""
+
+        item_data = self._get(
+            url=f'/items/{item_code}'
+        )
+
+        if item_data.status_code == 200:
+            result = item_data.json().get('data', {}).get('item', {})
+
+        else:
+            result = {}
+
+        return result
+
+    def get_bank_items(self):
+        """Get bank items."""
+
+        bank_items_data = self._get(
+            url='/my/bank/items',
+        )
+
+        if bank_items_data.status_code == 200:
+            result = bank_items_data.json().get('data', [])
+            total_pages = bank_items_data.json().get('pages', 1)
+            if total_pages > 1:
+                for page in range(2, total_pages + 1):
+                    bank_items_data = self._get(
+                        url='/my/bank/items',
+                        data={
+                            'page': page,
+                        }
+                    )
+                    result.extend(bank_items_data.json().get('data', []))
+        else:
+            print(bank_items_data.json()['error']['message'])
+            result = []
+
+        return result
+
+    def get_bank_gold(self):
+        """Get bank gold quantity."""
+
+        bank_gold_data = self._get(
+            url='/my/bank/gold',
+        )
+
+        if bank_gold_data.status_code == 200:
+            gold_quantity = bank_gold_data.json().get('data', {}).get('quantity', 0)
+        else:
+            gold_quantity = 0
+
+        return gold_quantity
 
 
 class Character(BaseClient):
@@ -607,6 +751,55 @@ class Character(BaseClient):
 
         self._do_action(
             action_name='task/complete',
+        )
+
+    def exchange_task_coins(self):
+        """Exchange task coins."""
+
+        self._do_action(
+            action_name='task/exchange'
+        )
+
+    def deposit_item(self, item_code='', quantity=0):
+        """Deposit item to bank."""
+
+        self._do_action(
+            action_name='bank/deposit',
+            action_data={
+                'code': item_code,
+                'quantity': quantity,
+            }
+        )
+
+    def deposit_gold(self, quantity=0):
+        """Deposit item to bank."""
+
+        self._do_action(
+            action_name='bank/deposit/gold',
+            action_data={
+                'quantity': quantity,
+            }
+        )
+
+    def withdraw_item(self, item_code='', quantity=0):
+        """Withdraw item from bank."""
+
+        self._do_action(
+            action_name='bank/withdraw',
+            action_data={
+                'code': item_code,
+                'quantity': quantity,
+            }
+        )
+
+    def withdraw_gold(self, quantity=0):
+        """Withdraw item from bank."""
+
+        self._do_action(
+            action_name='bank/withdraw/gold',
+            action_data={
+                'quantity': quantity,
+            }
         )
 
     def _get_item_data(self, item_name=''):

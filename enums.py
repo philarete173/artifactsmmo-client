@@ -58,8 +58,13 @@ class ActionTypeEnum(Enum):
     DELETE = 'delete'
     NEW_TASK = 'new task'
     COMPLETE_TASK = 'complete task'
+    EXCHANGE_TASK = 'exchange task coins'
     BUY_ITEM = 'buy item'
     SELL_ITEM = 'sell item'
+    DEPOSIT_BANK = 'deposit item'
+    DEPOSIT_BANK_GOLD = 'deposit gold'
+    WITHDRAW_BANK = 'withdraw item'
+    WITHDRAW_GOLD = 'withdraw gold'
 
     USE_SCENARIO = 'use scenario'
 
@@ -109,6 +114,10 @@ class ActionTypeEnum(Enum):
             MOVE,
             EQUIP,
             UNEQUIP,
+            DEPOSIT_BANK,
+            DEPOSIT_BANK_GOLD,
+            WITHDRAW_BANK,
+            WITHDRAW_GOLD,
             USE_SCENARIO,
         ],
         MapTypesEnum.GRAND_EXCHANGE.value: [
@@ -125,6 +134,7 @@ class ActionTypeEnum(Enum):
             UNEQUIP,
             NEW_TASK,
             COMPLETE_TASK,
+            EXCHANGE_TASK,
             USE_SCENARIO,
         ],
     }
@@ -153,6 +163,18 @@ class ItemTypesEnum(Enum):
     SHIELD = 'shield'
     AMULET = 'amulet'
     RING = 'ring'
+
+    EQUIP_TYPES = [
+        CONSUMABLE,
+        BODY_ARMOR,
+        WEAPON,
+        LEG_ARMOR,
+        HELMET,
+        BOOTS,
+        SHIELD,
+        AMULET,
+        RING,
+    ]
 
 
 class EquipmentSlotsEnum(Enum):

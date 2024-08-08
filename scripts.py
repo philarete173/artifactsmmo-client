@@ -1,8 +1,43 @@
 class ScenariosStorage:
     """Class for storing scenarios for character automation."""
 
+    GATHER_RESOURCES_CATEGORY = 'Gather resources'
+    CRAFT_RESOURCES_CATEGORY = 'Craft resources'
+    CRAFT_ITEMS_CATEGORY = 'Craft items'
+
     def __init__(self, character):
         self.character = character
+
+        self.scenarios_category_map = {
+            self.GATHER_RESOURCES_CATEGORY: [
+                self.gather_copper_ore,
+                self.gather_iron_ore,
+                self.gather_coal,
+                self.gather_gold_ore,
+                self.gather_ash_wood,
+                self.gather_spruce_wood,
+                self.gather_birch_wood,
+            ],
+            self.CRAFT_RESOURCES_CATEGORY: [
+                self.craft_copper,
+                self.craft_iron,
+                self.craft_steel,
+                self.craft_gold,
+                self.craft_ash_planks,
+                self.craft_spruce_planks,
+                self.craft_hardwood_planks,
+            ],
+            self.CRAFT_ITEMS_CATEGORY: [
+                self.craft_wooden_staff,
+                self.craft_wooden_shield,
+                self.craft_copper_dagger,
+                self.craft_copper_helmet,
+                self.craft_copper_boots,
+                self.craft_copper_ring,
+                self.craft_copper_armor,
+                self.craft_copper_legs_armor,
+            ],
+        }
 
     def gather_copper_ore(self, quantity=1):
         self.character.move(2, 0)
