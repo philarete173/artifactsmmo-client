@@ -823,15 +823,16 @@ class Character(BaseGameClient):
     def sell_item(self, item_name='', quantity=1):
         """Sell an item to General Exchange."""
 
-        item_data = self._get_item_data(item_name)
-        current_price = item_data.get('data', {}).get('ge', {}).get('sell_price', 0)
+        for part_quantity in [50 for _ in range(quantity // 50)] + [quantity % 50]:
+            item_data = self._get_item_data(item_name)
+            current_price = item_data.get('data', {}).get('ge', {}).get('sell_price', 0)
 
-        if current_price:
-            self._do_action(
-                action_name='ge/sell',
-                action_data={
-                    'code': item_name,
-                    'quantity': quantity,
-                    'price': current_price,
-                }
-            )
+            if current_price:
+                self._do_action(
+                    action_name='ge/sell',
+                    action_data={
+                        'code': item_name,
+                        'quantity': part_quantity,
+                        'price': current_price,
+                    }
+                )
