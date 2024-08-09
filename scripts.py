@@ -104,7 +104,7 @@ class ScenariosStorage(BaseClient):
         for _ in range(quantity):
             self.character.gathering()
 
-    def gather_resource_from_monsters(self, item_code, quantity=1):
+    def gather_resource_from_monsters(self, item_code='', quantity=1):
         monster_data = self._get(
             url='/monsters',
             data={
