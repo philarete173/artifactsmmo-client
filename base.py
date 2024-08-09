@@ -1,3 +1,5 @@
+from time import sleep
+
 import requests
 
 
@@ -15,9 +17,34 @@ class BaseClient:
     def _post(self, url='', data=None):
         """Send POST request."""
 
-        return requests.post(url=self.base_url + url, json=data or {}, headers=self.base_headers)
+        return self._do_request(method='post', url=url, data=data)
 
     def _get(self, url='', data=None):
         """Send GET request."""
 
-        return requests.get(url=self.base_url + url, params=data or {}, headers=self.base_headers)
+        return self._do_request(method='get', url=url, data=data)
+
+    def _do_request(self, method='get', url='', data=None):
+        """Send request to game."""
+
+        params = {
+            'method': method,
+            'url': self.base_url + url,
+            'headers': self.base_headers,
+        }
+
+        if method == 'get':
+            params.update(params=data or {})
+        elif method == 'post':
+            params.update(json=data or {})
+
+        while True:
+            try:
+                request = requests.request(**params)
+                request.json()
+                break
+            except (requests.exceptions.ConnectionError, requests.exceptions.JSONDecodeError):
+                sleep(1)
+                continue
+
+        return request
