@@ -40,8 +40,10 @@ class ScenariosStorage(BaseClient):
                 self.craft_copper_helmet,
                 self.craft_copper_boots,
                 self.craft_copper_ring,
+                self.craft_life_amulet,
                 self.craft_copper_armor,
                 self.craft_copper_legs_armor,
+                self.craft_iron_ring,
             ],
         }
 
@@ -247,6 +249,16 @@ class ScenariosStorage(BaseClient):
         if sell:
             self._sell_item('copper_legs_armor', quantity)
 
+    def craft_life_amulet(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('blue_slimeball', quantity)
+        self.gather_resource_from_monsters('red_slimeball', quantity)
+        self.gather_resource_from_monsters('cowhide', 2 * quantity)
+
+        self._craft_jewelry('life_amulet', quantity)
+
+        if sell:
+            self._sell_item('life_amulet', quantity)
+
     def craft_iron_dagger(self, quantity=1, sell=False):
         self.craft_copper(2 * quantity)
         self.craft_iron(6 * quantity)
@@ -280,3 +292,12 @@ class ScenariosStorage(BaseClient):
 
         if sell:
             self._sell_item('iron_boots', quantity)
+
+    def craft_iron_ring(self, quantity=1, sell=False):
+        self.craft_iron(6 * quantity)
+
+        self._craft_jewelry('iron_ring', quantity)
+
+        if sell:
+            self._sell_item('iron_ring', quantity)
+
