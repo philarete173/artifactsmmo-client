@@ -15,100 +15,184 @@ class ScenariosStorage(BaseClient):
         self.character = character
 
         self.scenarios_category_map = {
-            self.GATHER_RESOURCES_CATEGORY: [
-                self.gather_copper_ore,
+            self.GATHER_RESOURCES_CATEGORY: self._get_gather_resources_category_scenarios,
+            self.CRAFT_RESOURCES_CATEGORY: self._get_craft_resources_category_scenarios,
+            self.CRAFT_EQUIPMENT_CATEGORY: self._get_craft_equipment_category_scenarios,
+            self.CRAFT_CONSUMABLES: self._get_craft_consumables_scenarios,
+        }
+
+    def _get_gather_resources_category_scenarios(self):
+        scenarios_list = [
+            self.gather_copper_ore,
+            self.gather_ash_wood,
+        ]
+
+        if self.character.mining_level >= 10:
+            scenarios_list.append(self.gather_iron_ore)
+
+        if self.character.mining_level >= 20:
+            scenarios_list.extend([
                 self.gather_iron_ore,
                 self.gather_coal,
-                self.gather_gold_ore,
-                self.gather_ash_wood,
-                self.gather_spruce_wood,
-                self.gather_birch_wood,
-                self.gather_dead_wood,
-                self.gather_resource_from_location,
-                self.gather_resource_from_monsters,
-            ],
-            self.CRAFT_RESOURCES_CATEGORY: [
-                self.craft_copper,
-                self.craft_iron,
-                self.craft_steel,
-                self.craft_gold,
-                self.craft_ash_planks,
-                self.craft_spruce_planks,
-                self.craft_hardwood_planks,
-                self.craft_dead_wood_planks,
-            ],
-            self.CRAFT_EQUIPMENT_CATEGORY: [
-                self.craft_wooden_staff,
-                self.craft_wooden_shield,
-                self.craft_copper_dagger,
-                self.craft_copper_helmet,
-                self.craft_copper_boots,
-                self.craft_copper_ring,
-                self.craft_life_amulet,
-                self.craft_copper_armor,
-                self.craft_copper_legs_armor,
-                self.craft_feather_coat,
+            ])
+
+        if self.character.mining_level >= 30:
+            scenarios_list.append(self.gather_gold_ore)
+
+        if self.character.woodcutting_level >= 10:
+            scenarios_list.append(self.gather_spruce_wood)
+
+        if self.character.woodcutting_level >= 20:
+            scenarios_list.append(self.gather_birch_wood)
+
+        if self.character.woodcutting_level >= 30:
+            scenarios_list.append(self.gather_dead_wood)
+
+        scenarios_list.extend([
+            self.gather_resource_from_location,
+            self.gather_resource_from_monsters,
+        ])
+
+        return scenarios_list
+
+    def _get_craft_resources_category_scenarios(self):
+        scenarios_list = [
+            self.craft_copper,
+            self.craft_ash_planks,
+        ]
+
+        if self.character.mining_level >= 10:
+            scenarios_list.append(self.craft_iron)
+
+        if self.character.mining_level >= 20:
+            scenarios_list.append(self.craft_steel)
+
+        if self.character.mining_level >= 30:
+            scenarios_list.append(self.craft_gold)
+
+        if self.character.woodcutting_level >= 10:
+            scenarios_list.append(self.craft_spruce_planks)
+
+        if self.character.woodcutting_level >= 20:
+            scenarios_list.append(self.craft_hardwood_planks)
+
+        if self.character.woodcutting_level >= 30:
+            scenarios_list.append(self.craft_dead_wood_planks)
+
+        return scenarios_list
+
+    def _get_craft_equipment_category_scenarios(self):
+        scenarios_list = [
+            self.craft_wooden_staff,
+            self.craft_wooden_shield,
+            self.craft_copper_dagger,
+            self.craft_copper_helmet,
+            self.craft_copper_boots,
+            self.craft_copper_ring,
+        ]
+
+        if self.character.weaponcrafting_level >= 5:
+            scenarios_list.extend([
+
+            ])
+
+        if self.character.weaponcrafting_level >= 10:
+            scenarios_list.extend([
                 self.craft_iron_dagger,
                 self.craft_iron_sword,
                 self.craft_greater_wooden_staff,
-                self.craft_iron_ring,
+            ])
+
+        if self.character.weaponcrafting_level >= 15:
+            scenarios_list.extend([
+
+            ])
+
+        if self.character.weaponcrafting_level >= 20:
+            scenarios_list.extend([
+
+            ])
+
+        if self.character.weaponcrafting_level >= 25:
+            scenarios_list.extend([
+
+            ])
+
+        if self.character.weaponcrafting_level >= 30:
+            scenarios_list.extend([
+
+            ])
+
+        if self.character.gearcrafting_level >= 5:
+            scenarios_list.extend([
+                self.craft_copper_armor,
+                self.craft_copper_legs_armor,
+                self.craft_feather_coat,
+            ])
+
+        if self.character.gearcrafting_level >= 10:
+            scenarios_list.extend([
                 self.craft_adventurer_helmet,
                 self.craft_adventurer_pants,
                 self.craft_adventurer_vest,
+            ])
+
+        if self.character.gearcrafting_level >= 15:
+            scenarios_list.extend([
                 self.craft_adventurer_boots,
-            ],
-            self.CRAFT_CONSUMABLES: [
+            ])
 
-            ],
-        }
+        if self.character.gearcrafting_level >= 20:
+            scenarios_list.extend([
 
-    def _sell_item(self, item_name='', quantity=1):
-        self.character.move(5, 1)
-        self.character.sell_item(item_name, quantity)
+            ])
 
-    def _craft_weapon(self, item_code='', quantity=1):
-        self.character.move(2, 1)
-        self.character.crafting(item_code, quantity)
+        if self.character.gearcrafting_level >= 25:
+            scenarios_list.extend([
 
-    def _craft_gear(self, item_code='', quantity=1):
-        self.character.move(3, 1)
-        self.character.crafting(item_code, quantity)
+            ])
 
-    def _craft_jewelry(self, item_code='', quantity=1):
-        self.character.move(1, 3)
-        self.character.crafting(item_code, quantity)
+        if self.character.gearcrafting_level >= 30:
+            scenarios_list.extend([
 
-    def _craft_metal(self, item_code='', quantity=1):
-        self.character.move(1, 5)
-        self.character.crafting(item_code, quantity)
+            ])
 
-    def _craft_planks(self, item_code='', quantity=1):
-        self.character.move(-2, -3)
-        self.character.crafting(item_code, quantity)
+        if self.character.jewelrycrafting_level >= 5:
+            scenarios_list.extend([
+                self.craft_life_amulet,
+            ])
 
-    def gather_copper_ore(self, quantity=1):
-        self.gather_resource_from_location('copper_ore', quantity)
+        if self.character.jewelrycrafting_level >= 10:
+            scenarios_list.extend([
+                self.craft_iron_ring,
+            ])
 
-    def gather_iron_ore(self, quantity=1):
-        self.gather_resource_from_location('iron_ore', quantity)
+        if self.character.jewelrycrafting_level >= 15:
+            scenarios_list.extend([
 
-    def gather_coal(self, quantity=1):
-        self.gather_resource_from_location('coal', quantity)
+            ])
 
-    def gather_gold_ore(self, quantity=1):
-        self.gather_resource_from_location('gold_ore', quantity)
+        if self.character.jewelrycrafting_level >= 20:
+            scenarios_list.extend([
 
-    def gather_ash_wood(self, quantity=1):
-        self.gather_resource_from_location('ash_wood', quantity)
+            ])
 
-    def gather_spruce_wood(self, quantity=1):
-        self.gather_resource_from_location('spruce_wood', quantity)
+        if self.character.jewelrycrafting_level >= 25:
+            scenarios_list.extend([
 
-    def gather_birch_wood(self, quantity=1):
-        self.gather_resource_from_location('birch_wood', quantity)
+            ])
 
-    def gather_dead_wood(self, quantity=1):
-        self.gather_resource_from_location('dead_wood', quantity)
+        if self.character.jewelrycrafting_level >= 30:
+            scenarios_list.extend([
+
+            ])
+
+        return scenarios_list
+
+    def _get_craft_consumables_scenarios(self):
+        scenarios_list = []
+
+        return scenarios_list
 
     def _gather_resource(self, type_from='', item_code='', quantity=1):
         item_data = self._get(
@@ -152,11 +236,59 @@ class ScenariosStorage(BaseClient):
         elif error_block := item_data.json().get('error'):
             print(f'Can\'t get item data. {error_block["message"]}.')
 
+    def _sell_item(self, item_name='', quantity=1):
+        self.character.move(5, 1)
+        self.character.sell_item(item_name, quantity)
+
+    def _craft_weapon(self, item_code='', quantity=1):
+        self.character.move(2, 1)
+        self.character.crafting(item_code, quantity)
+
+    def _craft_gear(self, item_code='', quantity=1):
+        self.character.move(3, 1)
+        self.character.crafting(item_code, quantity)
+
+    def _craft_jewelry(self, item_code='', quantity=1):
+        self.character.move(1, 3)
+        self.character.crafting(item_code, quantity)
+
+    def _craft_metal(self, item_code='', quantity=1):
+        self.character.move(1, 5)
+        self.character.crafting(item_code, quantity)
+
+    def _craft_planks(self, item_code='', quantity=1):
+        self.character.move(-2, -3)
+        self.character.crafting(item_code, quantity)
+
     def gather_resource_from_location(self, item_code='', quantity=1):
         self._gather_resource(type_from='resources', item_code=item_code, quantity=quantity)
 
     def gather_resource_from_monsters(self, item_code='', quantity=1):
         self._gather_resource(type_from='monsters', item_code=item_code, quantity=quantity)
+
+    def gather_copper_ore(self, quantity=1):
+        self.gather_resource_from_location('copper_ore', quantity)
+
+    def gather_iron_ore(self, quantity=1):
+        self.gather_resource_from_location('iron_ore', quantity)
+
+    def gather_coal(self, quantity=1):
+        self.gather_resource_from_location('coal', quantity)
+
+    def gather_gold_ore(self, quantity=1):
+        self.gather_resource_from_location('gold_ore', quantity)
+
+    def gather_ash_wood(self, quantity=1):
+        self.gather_resource_from_location('ash_wood', quantity)
+
+    def gather_spruce_wood(self, quantity=1):
+        self.gather_resource_from_location('spruce_wood', quantity)
+
+    def gather_birch_wood(self, quantity=1):
+        self.gather_resource_from_location('birch_wood', quantity)
+
+    def gather_dead_wood(self, quantity=1):
+        self.gather_resource_from_location('dead_wood', quantity)
 
     def craft_copper(self, quantity=1):
         self.gather_copper_ore(6 * quantity)
@@ -371,5 +503,3 @@ class ScenariosStorage(BaseClient):
 
         if sell:
             self._sell_item('adventurer_boots', quantity)
-
-

@@ -421,7 +421,7 @@ class GameClient(BaseGameClient):
             f'{scenarios_category_str}\n'
             'Please type a number: '
         ))
-        category_scenarios = self.scenarios_storage.scenarios_category_map[scenarios_category_map[scenario_category_idx_select]]
+        category_scenarios = self.scenarios_storage.scenarios_category_map[scenarios_category_map[scenario_category_idx_select]]()
         scenarios_map, scenarios_map_str = self._prepare_actions_menu_data([scenario.__name__ for scenario in category_scenarios])
 
         scenario_idx_select = int(input(
