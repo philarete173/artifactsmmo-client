@@ -442,7 +442,7 @@ class GameClient(BaseGameClient):
             parameter_type = type(parameter.default)
             params[name] = parameter_type(input(f'{name} (default: {parameter.default}): '))
 
-        if scenarios_category_map[scenario_category_idx_select] == ScenariosStorage.CRAFT_ITEMS_CATEGORY:
+        if scenarios_category_map[scenario_category_idx_select] == ScenariosStorage.CRAFT_EQUIPMENT_CATEGORY:
             repeats = int(input('How many times to repeat the scenario?: '))
         else:
             repeats = 1
