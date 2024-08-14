@@ -101,11 +101,14 @@ class ScenariosStorage(BaseClient):
                 self.craft_iron_dagger,
                 self.craft_iron_sword,
                 self.craft_greater_wooden_staff,
+                self.craft_fire_bow,
             ])
 
         if self.character.weaponcrafting_level >= 15:
             scenarios_list.extend([
-
+                self.craft_multislimes_sword,
+                self.craft_mushstaff,
+                self.craft_mushmush_bow,
             ])
 
         if self.character.weaponcrafting_level >= 20:
@@ -169,7 +172,11 @@ class ScenariosStorage(BaseClient):
 
         if self.character.jewelrycrafting_level >= 15:
             scenarios_list.extend([
-
+                self.craft_air_ring,
+                self.craft_earth_ring,
+                self.craft_fire_ring,
+                self.craft_water_ring,
+                self.craft_life_ring,
             ])
 
         if self.character.jewelrycrafting_level >= 20:
@@ -443,6 +450,15 @@ class ScenariosStorage(BaseClient):
         if sell:
             self._sell_item('greater_wooden_staff', quantity)
 
+    def craft_fire_bow(self, quantity=1, sell=False):
+        self.craft_spruce_planks(4 * quantity)
+        self.gather_resource_from_monsters('red_slimeball', 2 * quantity)
+
+        self._craft_weapon('fire_bow', quantity)
+
+        if sell:
+            self._sell_item('fire_bow', quantity)
+
     def craft_iron_boots(self, quantity=1, sell=False):
         self.craft_iron(6 * quantity)
 
@@ -503,3 +519,90 @@ class ScenariosStorage(BaseClient):
 
         if sell:
             self._sell_item('adventurer_boots', quantity)
+
+    def craft_multislimes_sword(self, quantity=1, sell=False):
+        self.craft_iron_sword(quantity)
+        self.gather_resource_from_monsters('red_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('green_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('blue_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 3 * quantity)
+
+        self._craft_weapon('multislimes_sword', quantity)
+
+        if sell:
+            self._sell_item('multislimes_sword', quantity)
+
+    def craft_mushstaff(self, quantity=1, sell=False):
+        self.craft_spruce_planks(5 * quantity)
+        self.craft_iron(quantity)
+        self.gather_resource_from_monsters('mushroom', 5 * quantity)
+        self.gather_resource_from_monsters('flying_wing', 2 * quantity)
+
+        self._craft_weapon('mushstaff', quantity)
+
+        if sell:
+            self._sell_item('mushstaff', quantity)
+
+    def craft_mushmush_bow(self, quantity=1, sell=False):
+        self.craft_spruce_planks(6 * quantity)
+        self.gather_resource_from_monsters('wolf_hair', 3 * quantity)
+        self.gather_resource_from_monsters('mushroom', 4 * quantity)
+
+        self._craft_weapon('mushmush_bow', quantity)
+
+        if sell:
+            self._sell_item('mushmush_bow', quantity)
+
+
+    def craft_air_ring(self, quantity=1, sell=False):
+        self.craft_iron_ring(quantity)
+        self.gather_resource_from_monsters('green_slimeball', 4 * quantity)
+        self.gather_resource_from_monsters('flying_wing', 2 * quantity)
+
+        self._craft_jewelry('air_ring', quantity)
+
+        if sell:
+            self._sell_item('air_ring', quantity)
+
+    def craft_earth_ring(self, quantity=1, sell=False):
+        self.craft_iron_ring(quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 4 * quantity)
+        self.gather_resource_from_monsters('mushroom', 2 * quantity)
+
+        self._craft_jewelry('earth_ring', quantity)
+
+        if sell:
+            self._sell_item('earth_ring', quantity)
+
+    def craft_fire_ring(self, quantity=1, sell=False):
+        self.craft_iron_ring(quantity)
+        self.gather_resource_from_monsters('red_slimeball', 4 * quantity)
+        self.gather_resource_from_monsters('mushroom', 2 * quantity)
+
+        self._craft_jewelry('fire_ring', quantity)
+
+        if sell:
+            self._sell_item('fire_ring', quantity)
+
+    def craft_water_ring(self, quantity=1, sell=False):
+        self.craft_iron_ring(quantity)
+        self.gather_resource_from_monsters('blue_slimeball', 4 * quantity)
+        self.gather_resource_from_monsters('flying_wing', 2 * quantity)
+
+        self._craft_jewelry('water_ring', quantity)
+
+        if sell:
+            self._sell_item('water_ring', quantity)
+
+    def craft_life_ring(self, quantity=1, sell=False):
+        self.craft_iron_ring(quantity)
+        self.gather_resource_from_monsters('feather', 2 * quantity)
+        self.gather_resource_from_monsters('mushroom', 2 * quantity)
+
+        self._craft_jewelry('life_ring', quantity)
+
+        if sell:
+            self._sell_item('life_ring', quantity)
+
+
+
