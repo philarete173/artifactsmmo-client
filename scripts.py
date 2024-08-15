@@ -168,6 +168,8 @@ class ScenariosStorage(BaseClient):
         if self.character.jewelrycrafting_level >= 10:
             scenarios_list.extend([
                 self.craft_iron_ring,
+                self.craft_fire_and_earth_amulet,
+                self.craft_air_and_water_amulet,
             ])
 
         if self.character.jewelrycrafting_level >= 15:
@@ -197,7 +199,43 @@ class ScenariosStorage(BaseClient):
         return scenarios_list
 
     def _get_craft_consumables_scenarios(self):
-        scenarios_list = []
+        scenarios_list = [
+            self.craft_cooked_gudgeon,
+            self.craft_cooked_chicken,
+        ]
+
+        if self.character.cooking_level >= 5:
+            scenarios_list.extend([
+                self.craft_cooked_beef,
+            ])
+
+        if self.character.cooking_level >= 10:
+            scenarios_list.extend([
+                self.craft_cheese,
+                self.craft_fried_eggs,
+                self.craft_mushroom_soup,
+                self.craft_beef_stew,
+            ])
+
+            if self.character.fishing_level >= 10:
+                scenarios_list.extend([
+                    self.craft_cooked_shrimp,
+                ])
+
+        if self.character.cooking_level >= 15:
+            scenarios_list.extend([
+                self.craft_cooked_wolf_meat,
+            ])
+
+        if self.character.cooking_level >= 20 and self.character.fishing_level >= 20:
+            scenarios_list.extend([
+                self.craft_cooked_trout,
+            ])
+
+        if self.character.cooking_level >= 30 and self.character.fishing_level >= 30:
+            scenarios_list.extend([
+                self.craft_cooked_bass,
+            ])
 
         return scenarios_list
 
@@ -265,6 +303,10 @@ class ScenariosStorage(BaseClient):
 
     def _craft_planks(self, item_code='', quantity=1):
         self.character.move(-2, -3)
+        self.character.crafting(item_code, quantity)
+
+    def _craft_food(self, item_code='', quantity=1):
+        self.character.move(1, 1)
         self.character.crafting(item_code, quantity)
 
     def gather_resource_from_location(self, item_code='', quantity=1):
@@ -475,6 +517,28 @@ class ScenariosStorage(BaseClient):
         if sell:
             self._sell_item('iron_ring', quantity)
 
+    def craft_fire_and_earth_amulet(self, quantity=1, sell=False):
+        self.craft_copper(3 * quantity)
+        self.craft_iron(4 * quantity)
+        self.gather_resource_from_monsters('red_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 3 * quantity)
+
+        self._craft_jewelry('fire_and_earth_amulet', quantity)
+
+        if sell:
+            self._sell_item('fire_and_earth_amulet', quantity)
+
+    def craft_air_and_water_amulet(self, quantity=1, sell=False):
+        self.craft_copper(2 * quantity)
+        self.craft_iron(6 * quantity)
+        self.gather_resource_from_monsters('green_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('blue_slimeball', 3 * quantity)
+
+        self._craft_jewelry('air_and_water_amulet', quantity)
+
+        if sell:
+            self._sell_item('air_and_water_amulet', quantity)
+
     def craft_adventurer_helmet(self, quantity=1, sell=False):
         self.gather_resource_from_monsters('feather', 4 * quantity)
         self.gather_resource_from_monsters('cowhide', 3 * quantity)
@@ -604,5 +668,94 @@ class ScenariosStorage(BaseClient):
         if sell:
             self._sell_item('life_ring', quantity)
 
+    def craft_cooked_gudgeon(self, quantity=1, sell=False):
+        self.gather_resource_from_location('gudgeon', quantity)
 
+        self._craft_food('cooked_gudgeon', quantity)
+
+        if sell:
+            self._sell_item('cooked_gudgeon', quantity)
+
+    def craft_cooked_chicken(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('raw_chicken', quantity)
+
+        self._craft_food('cooked_chicken', quantity)
+
+        if sell:
+            self._sell_item('cooked_chicken', quantity)
+
+    def craft_cooked_beef(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('raw_beef', quantity)
+
+        self._craft_food('cooked_beef', quantity)
+
+        if sell:
+            self._sell_item('cooked_beef', quantity)
+
+    def craft_cooked_shrimp(self, quantity=1, sell=False):
+        self.gather_resource_from_location('shrimp', quantity)
+
+        self._craft_food('cooked_shrimp', quantity)
+
+        if sell:
+            self._sell_item('cooked_shrimp', quantity)
+
+    def craft_cheese(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('milk_bucket', 3 * quantity)
+
+        self._craft_food('cheese', quantity)
+
+        if sell:
+            self._sell_item('cheese', quantity)
+
+    def craft_fried_eggs(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('egg', 5 * quantity)
+
+        self._craft_food('fried_eggs', quantity)
+
+        if sell:
+            self._sell_item('fried_eggs', quantity)
+
+    def craft_mushroom_soup(self, quantity=1, sell=False):
+        self.craft_ash_planks(quantity)
+        self.gather_resource_from_monsters('milk_bucket', quantity)
+        self.gather_resource_from_monsters('mushroom', quantity)
+
+        self._craft_food('mushroom_soup', quantity)
+
+        if sell:
+            self._sell_item('mushroom_soup', quantity)
+
+    def craft_beef_stew(self, quantity=1, sell=False):
+        self.craft_ash_planks(quantity)
+        self.gather_resource_from_monsters('raw_beef', 3 * quantity)
+
+        self._craft_food('beef_stew', quantity)
+
+        if sell:
+            self._sell_item('beef_stew', quantity)
+
+    def craft_cooked_wolf_meat(self, quantity=1, sell=False):
+        self.gather_resource_from_monsters('raw_wolf_meat', quantity)
+
+        self._craft_food('cooked_wolf_meat', quantity)
+
+        if sell:
+            self._sell_item('cooked_wolf_meat', quantity)
+
+    def craft_cooked_trout(self, quantity=1, sell=False):
+        self.gather_resource_from_location('trout', quantity)
+
+        self._craft_food('cooked_trout', quantity)
+
+        if sell:
+            self._sell_item('cooked_trout', quantity)
+
+    def craft_cooked_bass(self, quantity=1, sell=False):
+        self.gather_resource_from_location('bass', quantity)
+
+        self._craft_food('cooked_bass', quantity)
+
+        if sell:
+            self._sell_item('cooked_bass', quantity)
 
