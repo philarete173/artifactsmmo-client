@@ -74,7 +74,7 @@ class GameClient(BaseGameClient):
 
         while True:
             current_location_data = self.get_location_data(self.character.x, self.character.y)
-            location_type = current_location_data.get('content', {}).get('type', None)
+            location_type = (current_location_data.get('content', {}) or {}).get('type', None)
 
             available_actions, available_actions_str = self._prepare_actions_menu_data(
                 ActionTypeEnum.LOCATION_ACTIONS_MAP.value.get(location_type),

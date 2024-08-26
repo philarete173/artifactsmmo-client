@@ -193,3 +193,10 @@ class EquipmentSlotsEnum(Enum):
     ARTIFACT3 = 'artifact3'
     CONSUMABLE1 = 'consumable1'
     CONSUMABLE2 = 'consumable2'
+
+
+class TaskTypeEnum(Enum):
+
+    MONSTERS = 'monsters'
+    RESOURCES = 'resources'
+    CRAFTS = 'crafts'

@@ -1,4 +1,5 @@
 from base import BaseClient
+from enums import MapTypesEnum, TaskTypeEnum
 
 
 class ScenariosStorage(BaseClient):
@@ -8,6 +9,7 @@ class ScenariosStorage(BaseClient):
     CRAFT_RESOURCES_CATEGORY = 'Craft resources'
     CRAFT_EQUIPMENT_CATEGORY = 'Craft equipment'
     CRAFT_CONSUMABLES = 'Craft consumables'
+    OTHER_CATEGORY = 'Other scenarios'
 
     def __init__(self, character):
         super().__init__()
@@ -19,6 +21,7 @@ class ScenariosStorage(BaseClient):
             self.CRAFT_RESOURCES_CATEGORY: self._get_craft_resources_category_scenarios,
             self.CRAFT_EQUIPMENT_CATEGORY: self._get_craft_equipment_category_scenarios,
             self.CRAFT_CONSUMABLES: self._get_craft_consumables_scenarios,
+            self.OTHER_CATEGORY: self._get_other_scenarios,
         }
 
     def _get_gather_resources_category_scenarios(self):
@@ -239,6 +242,28 @@ class ScenariosStorage(BaseClient):
 
         return scenarios_list
 
+    def _get_other_scenarios(self):
+        return [
+            self.do_quest_from_tasks_master,
+        ]
+
+    def _get_location_for_content(self, content_code=''):
+        location_data = self._get(
+            url='/maps',
+            data={
+                'content_code': content_code,
+                'size': 1,
+            }
+        )
+
+        if location_data.status_code == 200:
+            location = location_data.json()['data'][0]
+
+            return location['x'], location['y']
+
+        elif error_block := location_data.json().get('error'):
+            print(f'Can\'t get location data. {error_block["message"]}.')
+
     def _gather_resource(self, type_from='', item_code='', quantity=1):
         item_data = self._get(
             url=f'/{type_from}',
@@ -251,32 +276,20 @@ class ScenariosStorage(BaseClient):
         if item_data.status_code == 200:
             content_code = item_data.json()['data'][0]['code']
 
-            location_data = self._get(
-                url='/maps',
-                data={
-                    'content_code': content_code,
-                    'size': 1,
-                }
-            )
+            if location := self._get_location_for_content(content_code):
 
-            if location_data.status_code == 200:
-                location = location_data.json()['data'][0]
-
-                self.character.move(location['x'], location['y'])
+                self.character.move(*location)
 
                 while next(
-                        filter(
-                            lambda item: item['code'] == item_code,
-                            self.character.inventory),
-                        {},
+                    filter(
+                        lambda item: item['code'] == item_code,
+                        self.character.inventory),
+                    {},
                 ).get('quantity', 0) < quantity:
                     if type_from == 'resources':
                         self.character.gathering()
                     elif type_from == 'monsters':
                         self.character.fight()
-
-            elif error_block := location_data.json().get('error'):
-                print(f'Can\'t get location data. {error_block["message"]}.')
 
         elif error_block := item_data.json().get('error'):
             print(f'Can\'t get item data. {error_block["message"]}.')
@@ -315,6 +328,40 @@ class ScenariosStorage(BaseClient):
     def gather_resource_from_monsters(self, item_code='', quantity=1):
         self._gather_resource(type_from='monsters', item_code=item_code, quantity=quantity)
 
+    def do_quest_from_tasks_master(self, quantity=1):
+        tasks_master_location_data = self._get(
+            url='/maps',
+            data={
+                'content_type': MapTypesEnum.TASKS_MASTER.value,
+                'size': 1,
+            }
+        )
+
+        if tasks_master_location_data.status_code == 200:
+            tasks_master_location = tasks_master_location_data.json()['data'][0]
+
+            for _ in range(quantity):
+                if not self.character.task:
+                    self.character.move(tasks_master_location['x'], tasks_master_location['y'])
+                    self.character.get_task()
+
+                if self.character.task_type == TaskTypeEnum.MONSTERS.value:
+                    if monster_location := self._get_location_for_content(self.character.task):
+                        self.character.move(*monster_location)
+
+                        while self.character.task_progress < self.character.task_total:
+                            self.character.fight()
+
+                        self.character.move(tasks_master_location['x'], tasks_master_location['y'])
+                        self.character.complete_task()
+
+                else:
+                    print('Can\'t process this type of task.')
+                    break
+
+        else:
+            print('Can\'t locate Tasks Master.')
+
     def gather_copper_ore(self, quantity=1):
         self.gather_resource_from_location('copper_ore', quantity)
 
@@ -340,44 +387,44 @@ class ScenariosStorage(BaseClient):
         self.gather_resource_from_location('dead_wood', quantity)
 
     def craft_copper(self, quantity=1):
-        self.gather_copper_ore(6 * quantity)
+        self.gather_copper_ore(8 * quantity)
 
         self._craft_metal('copper', quantity)
 
     def craft_iron(self, quantity=1):
-        self.gather_iron_ore(6 * quantity)
+        self.gather_iron_ore(8 * quantity)
 
         self._craft_metal('iron', quantity)
 
     def craft_steel(self, quantity=1):
-        self.gather_iron_ore(2 * quantity)
-        self.gather_coal(4 * quantity)
+        self.gather_iron_ore(3 * quantity)
+        self.gather_coal(5 * quantity)
 
         self._craft_metal('steel', quantity)
 
     def craft_gold(self, quantity=1):
-        self.gather_gold_ore(6 * quantity)
+        self.gather_gold_ore(8 * quantity)
 
         self._craft_metal('gold', quantity)
 
     def craft_ash_planks(self, quantity=1):
-        self.gather_ash_wood(6 * quantity)
+        self.gather_ash_wood(8 * quantity)
 
         self._craft_planks('ash_plank', quantity)
 
     def craft_spruce_planks(self, quantity=1):
-        self.gather_spruce_wood(6 * quantity)
+        self.gather_spruce_wood(8 * quantity)
 
         self._craft_planks('spruce_plank', quantity)
 
     def craft_hardwood_planks(self, quantity=1):
-        self.gather_ash_wood(2 * quantity)
-        self.gather_birch_wood(4 * quantity)
+        self.gather_ash_wood(3 * quantity)
+        self.gather_birch_wood(5 * quantity)
 
         self._craft_planks('hardwood_plank', quantity)
 
     def craft_dead_wood_planks(self, quantity=1):
-        self.gather_dead_wood(6 * quantity)
+        self.gather_dead_wood(8 * quantity)
 
         self._craft_planks('dead_wood_plank', quantity)
 
@@ -393,7 +440,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('wooden_staff', quantity)
 
     def craft_wooden_shield(self, quantity=1, sell=False):
-        self.craft_ash_planks(3 * quantity)
+        self.craft_ash_planks(6 * quantity)
 
         self._craft_gear('wooden_shield', quantity)
 
@@ -401,7 +448,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('wooden_shield', quantity)
 
     def craft_copper_dagger(self, quantity=1, sell=False):
-        self.craft_copper(3 * quantity)
+        self.craft_copper(6 * quantity)
 
         self._craft_weapon('copper_dagger', quantity)
 
@@ -409,7 +456,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('copper_dagger', quantity)
 
     def craft_copper_helmet(self, quantity=1, sell=False):
-        self.craft_copper(3 * quantity)
+        self.craft_copper(6 * quantity)
 
         self._craft_gear('copper_helmet', quantity)
 
@@ -417,7 +464,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('copper_helmet', quantity)
 
     def craft_copper_boots(self, quantity=1, sell=False):
-        self.craft_copper(3 * quantity)
+        self.craft_copper(8 * quantity)
 
         self._craft_gear('copper_boots', quantity)
 
@@ -425,7 +472,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('copper_boots', quantity)
 
     def craft_copper_ring(self, quantity=1, sell=False):
-        self.craft_copper(4 * quantity)
+        self.craft_copper(6 * quantity)
 
         self._craft_jewelry('copper_ring', quantity)
 
@@ -434,6 +481,7 @@ class ScenariosStorage(BaseClient):
 
     def craft_copper_armor(self, quantity=1, sell=False):
         self.craft_copper(5 * quantity)
+        self.gather_resource_from_monsters('feather', 2 * quantity)
 
         self._craft_gear('copper_armor', quantity)
 
@@ -441,7 +489,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('copper_armor', quantity)
 
     def craft_copper_legs_armor(self, quantity=1, sell=False):
-        self.craft_copper(4 * quantity)
+        self.craft_copper(6 * quantity)
 
         self._craft_gear('copper_legs_armor', quantity)
 
@@ -449,7 +497,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('copper_legs_armor', quantity)
 
     def craft_feather_coat(self, quantity=1, sell=False):
-        self.gather_resource_from_monsters('feather', 5 * quantity)
+        self.gather_resource_from_monsters('feather', 6 * quantity)
 
         self._craft_gear('feather_coat', quantity)
 
@@ -457,9 +505,9 @@ class ScenariosStorage(BaseClient):
             self._sell_item('feather_coat', quantity)
 
     def craft_life_amulet(self, quantity=1, sell=False):
-        self.gather_resource_from_monsters('blue_slimeball', quantity)
-        self.gather_resource_from_monsters('red_slimeball', quantity)
-        self.gather_resource_from_monsters('cowhide', 2 * quantity)
+        self.gather_resource_from_monsters('blue_slimeball', 2 * quantity)
+        self.gather_resource_from_monsters('red_slimeball', 2 * quantity)
+        self.gather_resource_from_monsters('feather', 4 * quantity)
 
         self._craft_jewelry('life_amulet', quantity)
 
@@ -616,7 +664,6 @@ class ScenariosStorage(BaseClient):
 
         if sell:
             self._sell_item('mushmush_bow', quantity)
-
 
     def craft_air_ring(self, quantity=1, sell=False):
         self.craft_iron_ring(quantity)
