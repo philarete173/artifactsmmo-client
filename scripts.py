@@ -347,9 +347,10 @@ class ScenariosStorage(BaseClient):
 
                 if self.character.task_type == TaskTypeEnum.MONSTERS.value:
                     if monster_location := self._get_location_for_content(self.character.task):
-                        self.character.move(*monster_location)
-
                         while self.character.task_progress < self.character.task_total:
+                            if (self.character.x, self.character.y) != monster_location:
+                                self.character.move(*monster_location)
+
                             self.character.fight()
 
                         self.character.move(tasks_master_location['x'], tasks_master_location['y'])
