@@ -138,9 +138,11 @@ class ScenariosStorage(BaseClient):
 
         if self.character.gearcrafting_level >= 10:
             scenarios_list.extend([
+                self.craft_iron_boots,
                 self.craft_adventurer_helmet,
                 self.craft_adventurer_pants,
                 self.craft_adventurer_vest,
+                self.craft_slime_shield,
             ])
 
         if self.character.gearcrafting_level >= 15:
@@ -289,6 +291,9 @@ class ScenariosStorage(BaseClient):
                     if type_from == 'resources':
                         self.character.gathering()
                     elif type_from == 'monsters':
+                        if (self.character.x, self.character.y) != location:
+                            self.character.move(*location)
+
                         self.character.fight()
 
         elif error_block := item_data.json().get('error'):
@@ -551,7 +556,8 @@ class ScenariosStorage(BaseClient):
             self._sell_item('fire_bow', quantity)
 
     def craft_iron_boots(self, quantity=1, sell=False):
-        self.craft_iron(6 * quantity)
+        self.craft_iron(5 * quantity)
+        self.gather_resource_from_monsters('feather', 3 * quantity)
 
         self._craft_gear('iron_boots', quantity)
 
@@ -588,7 +594,20 @@ class ScenariosStorage(BaseClient):
         if sell:
             self._sell_item('air_and_water_amulet', quantity)
 
+    def craft_slime_shield(self, quantity=1, sell=False):
+        self.craft_spruce_planks(6 * quantity)
+        self.gather_resource_from_monsters('green_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('blue_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('red_slimeball', 3 * quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 3 * quantity)
+
+        self._craft_gear('slime_shield', quantity)
+
+        if sell:
+            self._sell_item('slime_shield', quantity)
+
     def craft_adventurer_helmet(self, quantity=1, sell=False):
+        self.craft_spruce_planks(3 * quantity)
         self.gather_resource_from_monsters('feather', 4 * quantity)
         self.gather_resource_from_monsters('cowhide', 3 * quantity)
         self.gather_resource_from_monsters('mushroom', 4 * quantity)
@@ -600,7 +619,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('adventurer_helmet', quantity)
 
     def craft_adventurer_pants(self, quantity=1, sell=False):
-        self.craft_copper(2 * quantity)
+        self.craft_iron(2 * quantity)
         self.gather_resource_from_monsters('cowhide', 8 * quantity)
         self.gather_resource_from_monsters('mushroom', 2 * quantity)
 
@@ -610,12 +629,10 @@ class ScenariosStorage(BaseClient):
             self._sell_item('adventurer_pants', quantity)
 
     def craft_adventurer_vest(self, quantity=1, sell=False):
+        self.craft_spruce_planks(4 * quantity)
         self.gather_resource_from_monsters('feather', 2 * quantity)
-        self.gather_resource_from_monsters('cowhide', 8 * quantity)
-        self.gather_resource_from_monsters('red_slimeball', quantity)
-        self.gather_resource_from_monsters('green_slimeball', quantity)
-        self.gather_resource_from_monsters('blue_slimeball', quantity)
-        self.gather_resource_from_monsters('yellow_slimeball', quantity)
+        self.gather_resource_from_monsters('cowhide', 6 * quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 4 * quantity)
 
         self._craft_gear('adventurer_vest', quantity)
 
@@ -623,6 +640,7 @@ class ScenariosStorage(BaseClient):
             self._sell_item('adventurer_vest', quantity)
 
     def craft_adventurer_boots(self, quantity=1, sell=False):
+        self.craft_spruce_planks(2 * quantity)
         self.gather_resource_from_monsters('cowhide', 6 * quantity)
         self.gather_resource_from_monsters('wolf_hair', 4 * quantity)
         self.gather_resource_from_monsters('mushroom', 3 * quantity)
