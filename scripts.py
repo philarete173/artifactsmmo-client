@@ -611,7 +611,6 @@ class ScenariosStorage(BaseClient):
         self.gather_resource_from_monsters('feather', 4 * quantity)
         self.gather_resource_from_monsters('cowhide', 3 * quantity)
         self.gather_resource_from_monsters('mushroom', 4 * quantity)
-        self.craft_spruce_planks(3 * quantity)
 
         self._craft_gear('adventurer_helmet', quantity)
 
