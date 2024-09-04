@@ -96,7 +96,8 @@ class ScenariosStorage(BaseClient):
 
         if self.character.weaponcrafting_level >= 5:
             scenarios_list.extend([
-
+                self.craft_sticky_dagger,
+                self.craft_sticky_sword,
             ])
 
         if self.character.weaponcrafting_level >= 10:
@@ -519,6 +520,25 @@ class ScenariosStorage(BaseClient):
 
         if sell:
             self._sell_item('life_amulet', quantity)
+
+    def craft_sticky_dagger(self, quantity=1, sell=False):
+        self.craft_copper(5 * quantity)
+        self.gather_resource_from_monsters('green_slimeball', 2 * quantity)
+
+        self._craft_weapon('sticky_dagger', quantity)
+
+        if sell:
+            self._sell_item('sticky_dagger', quantity)
+
+    def craft_sticky_sword(self, quantity=1, sell=False):
+        self.craft_copper(5 * quantity)
+        self.gather_resource_from_monsters('yellow_slimeball', 2 * quantity)
+
+        self._craft_weapon('sticky_sword', quantity)
+
+        if sell:
+            self._sell_item('sticky_sword', quantity)
+
 
     def craft_iron_dagger(self, quantity=1, sell=False):
         self.craft_copper(2 * quantity)
