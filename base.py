@@ -1,3 +1,4 @@
+import json
 from time import sleep
 
 import requests
@@ -24,26 +25,54 @@ class BaseClient:
 
         return self._do_request(method='get', url=url, data=data)
 
-    def _do_request(self, method='get', url='', data=None):
-        """Send request to game."""
+    def _delete(self, url='', data=None):
+        """Send DELETE request."""
+
+        return self._do_request(method='delete', url=url, data=data)
+
+    def _put(self, url='', data=None):
+        """Send PUT request."""
+
+        return self._do_request(method='put', url=url, data=data)
+
+    def _do_request(self, method='get', url='', data=None, extra_headers=None):
+        """Send request to game with simple reconnect on transient failures."""
+
+        headers = dict(self.base_headers)
+        if extra_headers:
+            headers.update(extra_headers)
 
         params = {
             'method': method,
             'url': self.base_url + url,
-            'headers': self.base_headers,
+            'headers': headers,
         }
 
         if method == 'get':
-            params.update(params=data or {})
-        elif method == 'post':
-            params.update(json=data or {})
+            if data:
+                params['params'] = data
+        else:
+            if data:
+                params['json'] = data
 
+        attempts = 0
+        max_attempts = 5
         while True:
             try:
                 request = requests.request(**params)
-                request.json()
+                if request.status_code != 204:
+                    request.json()
                 break
-            except (requests.exceptions.ConnectionError, requests.exceptions.JSONDecodeError):
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                attempts += 1
+                if attempts >= max_attempts:
+                    raise
+                sleep(1)
+                continue
+            except json.JSONDecodeError:
+                attempts += 1
+                if attempts >= max_attempts:
+                    raise
                 sleep(1)
                 continue
 
