@@ -1,0 +1,367 @@
+from base import BaseClient
+from enums import MapTypesEnum
+
+
+ITEMS_MAX_PAGE_SIZE = 10000
+
+CRAFT_SKILL_LEVEL_ATTR = {
+    'weaponcrafting': 'weaponcrafting_level',
+    'gearcrafting': 'gearcrafting_level',
+    'jewelrycrafting': 'jewelrycrafting_level',
+    'cooking': 'cooking_level',
+    'woodcutting': 'woodcutting_level',
+    'mining': 'mining_level',
+    'alchemy': 'alchemy_level',
+}
+
+
+def _prompt_int(prompt, min_val=None, max_val=None):
+    """Read an integer from stdin. Empty input returns None (back signal)."""
+    while True:
+        try:
+            raw = input(prompt).strip()
+
+            if raw == '':
+                return None
+
+            value = int(raw)
+
+            if min_val is not None and value < min_val:
+                print(f'Please enter a number >= {min_val}.')
+
+                continue
+
+            if max_val is not None and value > max_val:
+                print(f'Please enter a number <= {max_val}.')
+
+                continue
+
+            return value
+
+        except ValueError:
+            print('Please enter a whole number (or press Enter to go back).')
+
+
+def _prompt_yes_no(prompt, default=False):
+    """Read a y/n answer. Empty input means default."""
+    default_label = 'Y/n' if default else 'y/N'
+
+    while True:
+        raw = input(f'{prompt} [{default_label}]: ').strip().lower()
+
+        if raw == '':
+            return default
+
+        if raw in ('y', 'yes'):
+            return True
+
+        if raw in ('n', 'no'):
+            return False
+
+        print('Please answer y or n.')
+
+
+def _inventory_quantity(character, item_code):
+    """Total quantity of item_code in the character's inventory."""
+    for slot in character.inventory or []:
+        if slot.get('code') == item_code:
+            return slot.get('quantity', 0)
+
+    return 0
+
+
+def _fetch_item_details(character, item_code):
+    """Fetch a single item's full details. Returns dict or None on failure."""
+    response = character._get(url=f'/items/{item_code}')
+
+    if response.status_code != 200:
+        return None
+
+    return response.json().get('data', {})
+
+
+def _fetch_items_by_skill(character, craft_skill):
+    """Fetch all craftable items for a skill, grouped by type.
+
+    Single GET to ``/items?craft_skill=X&max_level=Y&size=10000`` (no type filter).
+    Returns ``{item_type: [item, ...]}`` with only items that have a ``craft`` field.
+    Returns ``{}`` on API error or no craftable items.
+    """
+    level_attr = CRAFT_SKILL_LEVEL_ATTR[craft_skill]
+    max_level = getattr(character, level_attr, 0)
+
+    response = character._get(
+        url='/items',
+        data={
+            'craft_skill': craft_skill,
+            'max_level': max_level,
+            'size': ITEMS_MAX_PAGE_SIZE,
+        },
+    )
+
+    if response.status_code != 200:
+        error_block = response.json().get('error', {})
+        print(f'Can\'t fetch items: {error_block.get("message", "Unknown error.")}.')
+
+        return {}
+
+    body = response.json()
+    data = body.get('data', [])
+    total = body.get('total')
+
+    if total and total > len(data):
+        print(f'Warning: {total} matching items exist but only {len(data)} returned.')
+
+    items_by_type = {}
+
+    for item in data:
+        if not item.get('craft'):
+            continue
+
+        item_type = item.get('type', '')
+
+        if not item_type:
+            continue
+
+        items_by_type.setdefault(item_type, []).append(item)
+
+    return items_by_type
+
+
+def _fetch_location_for_content(character, content_code='', content_type=''):
+    """Find a map cell for given content. Returns (x, y, layer) or None."""
+    params = {'size': 1}
+
+    if content_code:
+        params['content_code'] = content_code
+
+    if content_type:
+        params['content_type'] = content_type
+
+    response = character._get(url='/maps', data=params)
+
+    if response.status_code == 200:
+        data = response.json().get('data', [])
+
+        if data:
+            location = data[0]
+
+            return (location['x'], location['y'], location.get('layer', 'overworld'))
+
+    return None
+
+
+def _gather_loop(character, item_code, quantity):
+    """Gather at current location until we have at least `quantity` of `item_code`."""
+    while _inventory_quantity(character, item_code) < quantity:
+        character.gathering()
+
+
+def _fight_loop(character, item_code, quantity):
+    """Fight at current location until we have at least `quantity` of `item_code`."""
+    while _inventory_quantity(character, item_code) < quantity:
+        character.fight()
+
+
+def _gather_base_item(character, item_code, quantity):
+    """Move to and gather a base resource that has no recipe of its own."""
+    resource_response = character._get(url='/resources', data={'drop': item_code, 'size': 1})
+    resource = None
+
+    if resource_response.status_code == 200:
+        data = resource_response.json().get('data', [])
+        resource = data[0] if data else None
+
+    if resource:
+        location = _fetch_location_for_content(character, content_code=resource['code'])
+
+        if location:
+            character.move(*location[:2])
+
+        _gather_loop(character, item_code, quantity)
+
+        return
+
+    monster_response = character._get(url='/monsters', data={'drop': item_code, 'size': 1})
+    monster = None
+
+    if monster_response.status_code == 200:
+        data = monster_response.json().get('data', [])
+        monster = data[0] if data else None
+
+    if monster:
+        location = _fetch_location_for_content(character, content_code=monster['code'])
+
+        if location:
+            character.move(*location[:2])
+
+        _fight_loop(character, item_code, quantity)
+
+        return
+
+    print(f'Warning: don\'t know where to get {item_code}.')
+
+
+def _craft_at_workshop(character, item_code, craft_skill, executions):
+    """Move to the workshop and craft `item_code` `executions` times."""
+    workshop = _fetch_location_for_content(character, content_code=craft_skill)
+
+    if workshop:
+        character.move(*workshop[:2])
+
+    character.crafting(item_code, executions)
+
+
+class ItemsScenarios(BaseClient):
+    """Generic crafting scenarios driven by the /items API.
+
+    A single ``craft_any_item`` scenario replaces the per-item ``craft_X``
+    methods that used to live in ``CraftResourcesScenarios``,
+    ``CraftEquipmentScenarios`` and ``CraftConsumablesScenarios``.
+    """
+
+    CATEGORY = 'Craft item'
+
+    CRAFT_SKILL_LEVEL_ATTR = CRAFT_SKILL_LEVEL_ATTR
+
+    MAX_RECIPE_DEPTH = 10
+
+    def __init__(self, character):
+        super().__init__()
+
+        self.character = character
+
+    @staticmethod
+    def get_scenarios(character):
+        return [ItemsScenarios.craft_any_item]
+
+    @classmethod
+    def craft_any_item(cls, character):
+        craft_skill = cls._prompt_craft_skill(character)
+
+        if craft_skill is None:
+            return
+
+        items_by_type = _fetch_items_by_skill(character, craft_skill)
+
+        if not items_by_type:
+            level = getattr(character, cls.CRAFT_SKILL_LEVEL_ATTR[craft_skill], 0)
+            print(f'No craftable items for {craft_skill} at level {level}.')
+
+            return
+
+        item_type = cls._prompt_item_type(items_by_type)
+
+        if item_type is None:
+            return
+
+        items = items_by_type[item_type]
+        item = cls._prompt_item(items)
+
+        if item is None:
+            return
+
+        quantity = _prompt_int('How many do you want to craft? [default: 1]: ', min_val=1)
+
+        if quantity is None:
+            quantity = 1
+
+        sell = _prompt_yes_no('Sell the crafted items?', default=False)
+        cls._execute_craft(character, item, quantity, sell)
+
+    @classmethod
+    def _prompt_craft_skill(cls, character):
+        skills = list(cls.CRAFT_SKILL_LEVEL_ATTR.keys())
+        print('Which craft skill do you want to use?')
+
+        for idx, skill in enumerate(skills, 1):
+            level = getattr(character, cls.CRAFT_SKILL_LEVEL_ATTR[skill], 0)
+            print(f'  {idx} - {skill} (your level: {level})')
+
+        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(skills))
+
+        if choice is None:
+            return None
+
+        return skills[choice - 1]
+
+    @classmethod
+    def _prompt_item_type(cls, items_by_type):
+        types = sorted(items_by_type.keys())
+        print('What type of item do you want to craft?')
+
+        for idx, item_type in enumerate(types, 1):
+            count = len(items_by_type[item_type])
+            print(f'  {idx} - {item_type} ({count} item{"s" if count != 1 else ""})')
+
+        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(types))
+
+        if choice is None:
+            return None
+
+        return types[choice - 1]
+
+    @classmethod
+    def _prompt_item(cls, items):
+        print('Which item do you want to craft?')
+
+        for idx, item in enumerate(items, 1):
+            craft = item.get('craft', {})
+            craft_skill = craft.get('skill', '?')
+            craft_level = craft.get('level', '?')
+            print(f'  {idx} - {item["name"]} (item level {item.get("level", "?")}, '
+                  f'requires {craft_skill} level {craft_level})')
+
+        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(items))
+
+        if choice is None:
+            return None
+
+        return items[choice - 1]
+
+    @classmethod
+    def _execute_craft(cls, character, item, quantity, sell):
+        cls._craft_recursive(character, item, quantity, depth=0)
+
+        if sell:
+            cls._sell_crafted(character, item, quantity)
+
+    @classmethod
+    def _craft_recursive(cls, character, item, quantity, depth):
+        craft = item.get('craft')
+
+        if not craft:
+            _gather_base_item(character, item['code'], quantity)
+
+            return
+
+        if depth >= cls.MAX_RECIPE_DEPTH:
+            print(f'Warning: recipe depth limit ({cls.MAX_RECIPE_DEPTH}) reached for {item["code"]}.')
+
+            return
+
+        craft_quantity_per_exec = craft.get('quantity', 1)
+        executions = (quantity + craft_quantity_per_exec - 1) // craft_quantity_per_exec
+
+        for required in craft.get('items', []):
+            req_code = required['code']
+            req_qty = required['quantity'] * executions
+            req_item = _fetch_item_details(character, req_code)
+
+            if req_item is None:
+                print(f'Warning: can\'t find details for required item {req_code}, skipping.')
+
+                continue
+
+            cls._craft_recursive(character, req_item, req_qty, depth + 1)
+
+        _craft_at_workshop(character, item['code'], craft['skill'], executions)
+
+    @classmethod
+    def _sell_crafted(cls, character, item, quantity):
+        ge = _fetch_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE.value)
+
+        if ge:
+            character.move(*ge[:2])
+
+        character.ge_create_sell_order(item['code'], quantity, price=0)
