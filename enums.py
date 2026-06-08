@@ -1,7 +1,7 @@
-from enum import Enum
+from base import BaseEnumerate
 
 
-class CharacterSkinsEnum(Enum):
+class CharacterSkinsEnum(BaseEnumerate):
 
     MEN1 = 'men1'
     MEN2 = 'men2'
@@ -15,45 +15,45 @@ class CharacterSkinsEnum(Enum):
     GOBLIN1 = 'goblin1'
 
 
-MALE_SKINS = [
-    CharacterSkinsEnum.MEN1,
-    CharacterSkinsEnum.MEN2,
-    CharacterSkinsEnum.MEN3,
-]
+    MALE_SKINS = [
+        MEN1,
+        MEN2,
+        MEN3,
+    ]
 
-FEMALE_SKINS = [
-    CharacterSkinsEnum.WOMEN1,
-    CharacterSkinsEnum.WOMEN2,
-    CharacterSkinsEnum.WOMEN3,
-]
+    FEMALE_SKINS = [
+        WOMEN1,
+        WOMEN2,
+        WOMEN3,
+    ]
 
-DEFAULT_SKINS = MALE_SKINS + FEMALE_SKINS
+    DEFAULT_SKINS = MALE_SKINS + FEMALE_SKINS
 
-SEASON_SKINS = [
-    CharacterSkinsEnum.CORRUPTED1,
-    CharacterSkinsEnum.ZOMBIE1,
-    CharacterSkinsEnum.MARAUDER1,
-    CharacterSkinsEnum.GOBLIN1,
-]
+    SEASON_SKINS = [
+        CORRUPTED1,
+        ZOMBIE1,
+        MARAUDER1,
+        GOBLIN1,
+    ]
 
-ALL_SKINS = DEFAULT_SKINS + SEASON_SKINS
+    ALL_SKINS = DEFAULT_SKINS + SEASON_SKINS
 
 
-class CharacterSexEnum(Enum):
+class CharacterSexEnum(BaseEnumerate):
 
     MALE = 'm'
     FEMALE = 'f'
     RANDOM = 'r'
 
 
-SEX_SKIN_MAP = {
-    'm': MALE_SKINS,
-    'f': FEMALE_SKINS,
-    'r': DEFAULT_SKINS,
-}
+    SEX_SKIN_MAP = {
+        MALE: CharacterSkinsEnum.MALE_SKINS,
+        FEMALE: CharacterSkinsEnum.FEMALE_SKINS,
+        RANDOM: CharacterSkinsEnum.DEFAULT_SKINS,
+    }
 
 
-class MapTypesEnum(Enum):
+class MapTypesEnum(BaseEnumerate):
 
     MONSTER = 'monster'
     RESOURCE = 'resource'
@@ -64,14 +64,14 @@ class MapTypesEnum(Enum):
     NPC = 'npc'
 
 
-class MapLayerEnum(Enum):
+class MapLayerEnum(BaseEnumerate):
 
     INTERIOR = 'interior'
     OVERWORLD = 'overworld'
     UNDERGROUND = 'underground'
 
 
-class MapAccessTypeEnum(Enum):
+class MapAccessTypeEnum(BaseEnumerate):
 
     STANDARD = 'standard'
     TELEPORTATION = 'teleportation'
@@ -79,7 +79,7 @@ class MapAccessTypeEnum(Enum):
     BLOCKED = 'blocked'
 
 
-class ActionTypeEnum(Enum):
+class ActionTypeEnum(BaseEnumerate):
 
     MOVE = 'move'
     TRANSITION = 'transition'
@@ -124,89 +124,89 @@ class ActionTypeEnum(Enum):
     USE_SCENARIO = 'use scenario'
 
 
-ACCOUNT_ACTIONS = [
-    ActionTypeEnum.SHOW_ACCOUNT_DETAILS,
-    ActionTypeEnum.CHANGE_PASSWORD,
-    ActionTypeEnum.LOGIN_WITH_PASSWORD,
-    ActionTypeEnum.SELECT_CHARACTER,
-]
+    ACCOUNT_ACTIONS = [
+        SHOW_ACCOUNT_DETAILS,
+        CHANGE_PASSWORD,
+        LOGIN_WITH_PASSWORD,
+        SELECT_CHARACTER,
+    ]
 
 
-GLOBAL_ACTIONS = [
-    ActionTypeEnum.MOVE,
-    ActionTypeEnum.EQUIP,
-    ActionTypeEnum.UNEQUIP,
-    ActionTypeEnum.USE_ITEM,
-    ActionTypeEnum.REST,
-    ActionTypeEnum.CHANGE_SKIN,
-    ActionTypeEnum.SHOW_BANK,
-    ActionTypeEnum.SHOW_PENDING_ITEMS,
-    ActionTypeEnum.SHOW_GE_ORDERS,
-    ActionTypeEnum.CLAIM_PENDING_ITEM,
-    ActionTypeEnum.GIVE_GOLD,
-    ActionTypeEnum.GIVE_ITEM,
-    ActionTypeEnum.USE_SCENARIO,
-]
+    GLOBAL_ACTIONS = [
+        MOVE,
+        EQUIP,
+        UNEQUIP,
+        USE_ITEM,
+        REST,
+        CHANGE_SKIN,
+        SHOW_BANK,
+        SHOW_PENDING_ITEMS,
+        SHOW_GE_ORDERS,
+        CLAIM_PENDING_ITEM,
+        GIVE_GOLD,
+        GIVE_ITEM,
+        USE_SCENARIO,
+    ]
 
-AVAILABLE_ACTIONS = list(GLOBAL_ACTIONS) + [
-    ActionTypeEnum.FIGHT,
-    ActionTypeEnum.GATHERING,
-    ActionTypeEnum.CRAFTING,
-    ActionTypeEnum.RECYCLING,
-    ActionTypeEnum.NEW_TASK,
-    ActionTypeEnum.COMPLETE_TASK,
-    ActionTypeEnum.CANCEL_TASK,
-    ActionTypeEnum.EXCHANGE_TASK,
-    ActionTypeEnum.TRADE_TASK,
-    ActionTypeEnum.BUY_NPC_ITEM,
-    ActionTypeEnum.SELL_NPC_ITEM,
-    ActionTypeEnum.BUY_BANK_EXPANSION,
-    ActionTypeEnum.DEPOSIT_BANK,
-    ActionTypeEnum.DEPOSIT_BANK_GOLD,
-    ActionTypeEnum.WITHDRAW_BANK,
-    ActionTypeEnum.WITHDRAW_GOLD,
-    ActionTypeEnum.BUY_GE_ITEM,
-    ActionTypeEnum.CANCEL_GE_ORDER,
-    ActionTypeEnum.CREATE_GE_BUY_ORDER,
-    ActionTypeEnum.CREATE_GE_SELL_ORDER,
-    ActionTypeEnum.FILL_GE_ORDER,
-    ActionTypeEnum.DELETE_ITEM,
-]
+    AVAILABLE_ACTIONS = GLOBAL_ACTIONS + [
+        FIGHT,
+        GATHERING,
+        CRAFTING,
+        RECYCLING,
+        NEW_TASK,
+        COMPLETE_TASK,
+        CANCEL_TASK,
+        EXCHANGE_TASK,
+        TRADE_TASK,
+        BUY_NPC_ITEM,
+        SELL_NPC_ITEM,
+        BUY_BANK_EXPANSION,
+        DEPOSIT_BANK,
+        DEPOSIT_BANK_GOLD,
+        WITHDRAW_BANK,
+        WITHDRAW_GOLD,
+        BUY_GE_ITEM,
+        CANCEL_GE_ORDER,
+        CREATE_GE_BUY_ORDER,
+        CREATE_GE_SELL_ORDER,
+        FILL_GE_ORDER,
+        DELETE_ITEM,
+    ]
 
-LOCATION_ACTIONS_MAP = {
-    None: list(GLOBAL_ACTIONS),
-    MapTypesEnum.MONSTER.value: GLOBAL_ACTIONS + [ActionTypeEnum.FIGHT],
-    MapTypesEnum.RESOURCE.value: GLOBAL_ACTIONS + [ActionTypeEnum.GATHERING],
-    MapTypesEnum.WORKSHOP.value: GLOBAL_ACTIONS + [ActionTypeEnum.CRAFTING, ActionTypeEnum.RECYCLING],
-    MapTypesEnum.BANK.value: GLOBAL_ACTIONS + [
-        ActionTypeEnum.DEPOSIT_BANK,
-        ActionTypeEnum.DEPOSIT_BANK_GOLD,
-        ActionTypeEnum.WITHDRAW_BANK,
-        ActionTypeEnum.WITHDRAW_GOLD,
-        ActionTypeEnum.BUY_BANK_EXPANSION,
-    ],
-    MapTypesEnum.GRAND_EXCHANGE.value: GLOBAL_ACTIONS + [
-        ActionTypeEnum.BUY_GE_ITEM,
-        ActionTypeEnum.CANCEL_GE_ORDER,
-        ActionTypeEnum.CREATE_GE_BUY_ORDER,
-        ActionTypeEnum.CREATE_GE_SELL_ORDER,
-        ActionTypeEnum.FILL_GE_ORDER,
-    ],
-    MapTypesEnum.TASKS_MASTER.value: GLOBAL_ACTIONS + [
-        ActionTypeEnum.NEW_TASK,
-        ActionTypeEnum.COMPLETE_TASK,
-        ActionTypeEnum.CANCEL_TASK,
-        ActionTypeEnum.EXCHANGE_TASK,
-        ActionTypeEnum.TRADE_TASK,
-    ],
-    MapTypesEnum.NPC.value: GLOBAL_ACTIONS + [
-        ActionTypeEnum.BUY_NPC_ITEM,
-        ActionTypeEnum.SELL_NPC_ITEM,
-    ],
-}
+    LOCATION_ACTIONS_MAP = {
+        None: GLOBAL_ACTIONS,
+        MapTypesEnum.MONSTER: GLOBAL_ACTIONS + [FIGHT],
+        MapTypesEnum.RESOURCE: GLOBAL_ACTIONS + [GATHERING],
+        MapTypesEnum.WORKSHOP: GLOBAL_ACTIONS + [CRAFTING, RECYCLING],
+        MapTypesEnum.BANK: GLOBAL_ACTIONS + [
+            DEPOSIT_BANK,
+            DEPOSIT_BANK_GOLD,
+            WITHDRAW_BANK,
+            WITHDRAW_GOLD,
+            BUY_BANK_EXPANSION,
+        ],
+        MapTypesEnum.GRAND_EXCHANGE: GLOBAL_ACTIONS + [
+            BUY_GE_ITEM,
+            CANCEL_GE_ORDER,
+            CREATE_GE_BUY_ORDER,
+            CREATE_GE_SELL_ORDER,
+            FILL_GE_ORDER,
+        ],
+        MapTypesEnum.TASKS_MASTER: GLOBAL_ACTIONS + [
+            NEW_TASK,
+            COMPLETE_TASK,
+            CANCEL_TASK,
+            EXCHANGE_TASK,
+            TRADE_TASK,
+        ],
+        MapTypesEnum.NPC: GLOBAL_ACTIONS + [
+            BUY_NPC_ITEM,
+            SELL_NPC_ITEM,
+        ],
+    }
 
 
-class CraftSkillEnum(Enum):
+class CraftSkillEnum(BaseEnumerate):
 
     WEAPONCRAFTING = 'weaponcrafting'
     GEARCRAFTING = 'gearcrafting'
@@ -215,7 +215,7 @@ class CraftSkillEnum(Enum):
     ALCHEMY = 'alchemy'
 
 
-class GatheringSkillEnum(Enum):
+class GatheringSkillEnum(BaseEnumerate):
 
     MINING = 'mining'
     WOODCUTTING = 'woodcutting'
@@ -223,7 +223,7 @@ class GatheringSkillEnum(Enum):
     ALCHEMY = 'alchemy'
 
 
-class ItemTypesEnum(Enum):
+class ItemTypesEnum(BaseEnumerate):
 
     UTILITY = 'utility'
     BODY_ARMOR = 'body_armor'
@@ -242,23 +242,23 @@ class ItemTypesEnum(Enum):
     BAG = 'bag'
 
 
-EQUIP_TYPES = [
-    ItemTypesEnum.UTILITY,
-    ItemTypesEnum.BODY_ARMOR,
-    ItemTypesEnum.WEAPON,
-    ItemTypesEnum.LEG_ARMOR,
-    ItemTypesEnum.HELMET,
-    ItemTypesEnum.BOOTS,
-    ItemTypesEnum.SHIELD,
-    ItemTypesEnum.AMULET,
-    ItemTypesEnum.RING,
-    ItemTypesEnum.ARTIFACT,
-    ItemTypesEnum.RUNE,
-    ItemTypesEnum.BAG,
-]
+    EQUIP_TYPES = [
+        UTILITY,
+        BODY_ARMOR,
+        WEAPON,
+        LEG_ARMOR,
+        HELMET,
+        BOOTS,
+        SHIELD,
+        AMULET,
+        RING,
+        ARTIFACT,
+        RUNE,
+        BAG,
+    ]
 
 
-class EquipmentSlotsEnum(Enum):
+class EquipmentSlotsEnum(BaseEnumerate):
 
     WEAPON = 'weapon'
     SHIELD = 'shield'
@@ -278,19 +278,19 @@ class EquipmentSlotsEnum(Enum):
     BAG = 'bag'
 
 
-class TaskTypeEnum(Enum):
+class TaskTypeEnum(BaseEnumerate):
 
     MONSTERS = 'monsters'
     ITEMS = 'items'
 
 
-class GEOrderTypeEnum(Enum):
+class GEOrderTypeEnum(BaseEnumerate):
 
     SELL = 'sell'
     BUY = 'buy'
 
 
-class LogTypeEnum(Enum):
+class LogTypeEnum(BaseEnumerate):
 
     SPAWN = 'spawn'
     DELETE_CHARACTER = 'delete_character'
@@ -332,14 +332,14 @@ class LogTypeEnum(Enum):
     CLAIM_ITEM = 'claim_item'
 
 
-class EffectTypeEnum(Enum):
+class EffectTypeEnum(BaseEnumerate):
 
     EQUIPMENT = 'equipment'
     CONSUMABLE = 'consumable'
     COMBAT = 'combat'
 
 
-class EffectSubtypeEnum(Enum):
+class EffectSubtypeEnum(BaseEnumerate):
 
     STAT = 'stat'
     OTHER = 'other'
@@ -352,20 +352,20 @@ class EffectSubtypeEnum(Enum):
     GOLD = 'gold'
 
 
-class NPCTypeEnum(Enum):
+class NPCTypeEnum(BaseEnumerate):
 
     MERCHANT = 'merchant'
     TRADER = 'trader'
 
 
-class MonsterTypeEnum(Enum):
+class MonsterTypeEnum(BaseEnumerate):
 
     NORMAL = 'normal'
     ELITE = 'elite'
     BOSS = 'boss'
 
 
-class PendingItemSourceEnum(Enum):
+class PendingItemSourceEnum(BaseEnumerate):
 
     ACHIEVEMENT = 'achievement'
     GRAND_EXCHANGE = 'grand_exchange'
@@ -374,7 +374,7 @@ class PendingItemSourceEnum(Enum):
     OTHER = 'other'
 
 
-class CharacterLeaderboardTypeEnum(Enum):
+class CharacterLeaderboardTypeEnum(BaseEnumerate):
 
     COMBAT = 'combat'
     WOODCUTTING = 'woodcutting'
@@ -387,13 +387,13 @@ class CharacterLeaderboardTypeEnum(Enum):
     ALCHEMY = 'alchemy'
 
 
-class AccountLeaderboardTypeEnum(Enum):
+class AccountLeaderboardTypeEnum(BaseEnumerate):
 
     ACHIEVEMENTS_POINTS = 'achievements_points'
     GOLD = 'gold'
 
 
-class AccountStatusEnum(Enum):
+class AccountStatusEnum(BaseEnumerate):
 
     STANDARD = 'standard'
     FOUNDER = 'founder'
@@ -401,7 +401,7 @@ class AccountStatusEnum(Enum):
     VIP_FOUNDER = 'vip_founder'
 
 
-class FightResultEnum(Enum):
+class FightResultEnum(BaseEnumerate):
 
     WIN = 'win'
     LOSS = 'loss'
