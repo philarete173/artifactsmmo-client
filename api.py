@@ -111,6 +111,7 @@ class GameClient(BaseGameClient):
 
         while True:
             current_location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
+            self._print_location_info(current_location_data)
             available_actions, available_actions_str = self._build_character_action_menu(current_location_data)
             current_action = self._prompt_character_action(available_actions, available_actions_str)
 
@@ -128,6 +129,16 @@ class GameClient(BaseGameClient):
                     print(f'Something went wrong. Error: {error}. Please try again.')
 
             print('')
+
+    def _print_location_info(self, location_data):
+        """Print current location information: coordinates and name."""
+
+        name = location_data.get('name', 'Unknown')
+        x = location_data.get('x', '?')
+        y = location_data.get('y', '?')
+        layer = location_data.get('layer', '?')
+
+        print(f'\n=== Location: {name} ({x}, {y}) [{layer}] ===')
 
     def _build_character_action_menu(self, location_data):
         location_type = (location_data.get('content') or {}).get('type', None)
