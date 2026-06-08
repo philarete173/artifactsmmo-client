@@ -1,11 +1,11 @@
-import configparser
 import inspect
 import random
 import re
 import sys
 from time import sleep
 
-from base import BaseClient
+from base import BaseGameClient
+from images import display_character_skin
 from enums import (
     CharacterSexEnum,
     CharacterSkinsEnum,
@@ -14,201 +14,8 @@ from enums import (
     MapTypesEnum,
     ItemTypesEnum,
     GEOrderTypeEnum,
-    LOCATION_ACTIONS_MAP,
-    EQUIP_TYPES,
-    SEX_SKIN_MAP,
-    SEASON_SKINS,
-    ACCOUNT_ACTIONS,
 )
 from scripts import ScenariosStorage
-
-
-class BaseGameClient(BaseClient):
-    """Basic client for sending requests with authorization token."""
-
-    CONFIG_PATH = 'config.ini'
-    CONFIG_SECTION = 'General'
-    CONFIG_TOKEN_KEY = 'TOKEN'
-
-    def __init__(self):
-        super().__init__()
-
-        self.config = self._get_config()
-        self._apply_token(self.config.get(self.CONFIG_SECTION, self.CONFIG_TOKEN_KEY, fallback=''))
-
-    def _get_config(self):
-        """Open config file."""
-
-        config = configparser.ConfigParser()
-        config.optionxform = str
-        config.read(self.CONFIG_PATH)
-
-        return config
-
-    def _save_config(self):
-        """Persist the current in-memory config back to disk."""
-
-        with open(self.CONFIG_PATH, 'w') as fh:
-            self.config.write(fh)
-
-    def _apply_token(self, token=''):
-        """Update the in-memory Authorization header with a new token."""
-
-        self.config.set(self.CONFIG_SECTION, self.CONFIG_TOKEN_KEY, token)
-        self.base_headers['Authorization'] = f'Bearer {token}'
-
-    def set_token(self, token=''):
-        """Update the bearer token both in memory and on disk."""
-
-        self._apply_token(token)
-        self._save_config()
-
-    def is_invalid_token_error(self, response):
-        """Detect the API's 'Invalid token' error in a response object."""
-
-        if response.status_code in (401, 403, 452):
-            return True
-
-        try:
-            error_block = response.json().get('error', {}) or {}
-        except ValueError:
-            error_block = {}
-
-        message = (error_block.get('message') or '').lower()
-        keywords = (
-            'invalid token',
-            'token',
-            'unauthorized',
-            'unauthenticated',
-            'not authenticated',
-            'authentication',
-        )
-        has_keyword = any(keyword in message for keyword in keywords)
-
-        return has_keyword
-
-    def request_new_token(self):
-        """Ask the user for username/password, fetch a new token via /token
-        and persist it to the config file. Keeps prompting until the user
-        authenticates successfully or explicitly cancels. Returns True on
-        success, False if the user cancels."""
-
-        result = self._run_login_loop()
-
-        return result
-
-    def _run_login_loop(self):
-        result = False
-        attempt = 0
-        done = False
-
-        while not done:
-            attempt += 1
-
-            if attempt > 1:
-                print('Please try again (or press Enter on the username prompt to cancel).')
-
-            success, cancelled = self._try_login_once()
-            if success:
-                result = True
-                done = True
-            elif cancelled:
-                result = False
-                done = True
-
-        return result
-
-    def _try_login_once(self):
-        """Return (success, cancelled) tuple for one login attempt."""
-        import base64
-        from getpass import getpass
-
-        username = input('Username: ').strip()
-
-        if not username:
-            print('Login cancelled.')
-            return False, True
-
-        password = getpass('Password: ')
-        credentials = base64.b64encode(
-            f'{username}:{password}'.encode('utf-8')
-        ).decode('ascii')
-
-        response = self._do_request(
-            method='post',
-            url='/token',
-            extra_headers={'Authorization': f'Basic {credentials}'},
-        )
-
-        if response.status_code == 200:
-            token = response.json().get('token')
-            if not token:
-                print('Server returned an empty token.')
-                return False, False
-            self.set_token(token)
-            print('New token saved to config.ini.')
-            return True, False
-
-        message, code = self._extract_error(response)
-        print(f'Authentication failed: {message} (code {code})')
-
-        return False, False
-
-    @staticmethod
-    def _extract_error(response):
-        try:
-            err = response.json().get('error', {}) or {}
-            return err.get('message', f'HTTP {response.status_code}'), err.get('code', '?')
-        except ValueError:
-            return f'HTTP {response.status_code}', '?'
-
-    def ensure_valid_token(self, probe_response=None):
-        """If the most recent auth call failed because of an invalid token,
-        offer the user a chance to log in again. Returns True if the token
-        is now valid (either it already was, or the user re-authed)."""
-
-        if probe_response is not None and not self.is_invalid_token_error(probe_response):
-            return True
-
-        print('The configured token is invalid or rejected by the server.')
-        wants_login = self._prompt_yes_no('Do you want to log in with username and password now? yes(y)/no(n): ')
-
-        if wants_login:
-            return self.request_new_token()
-
-        return False
-
-    def _prompt_yes_no(self, prompt):
-        """Loop on the y/n prompt until a valid answer is given."""
-        result = False
-        done = False
-
-        while not done:
-            answer = input(prompt).strip().lower()
-            if answer in ('y', 'yes'):
-                result = True
-                done = True
-            elif answer in ('n', 'no', ''):
-                result = False
-                done = True
-            else:
-                print('Please answer y or n.')
-
-        return result
-
-    @staticmethod
-    def _get_data(response):
-        """Return data block from a JSON response or an empty container."""
-
-        try:
-            payload = response.json()
-        except ValueError:
-            return {}
-
-        if response.status_code >= 400:
-            return {}
-
-        return payload.get('data', {} if response.status_code == 204 else {})
 
 
 class GameClient(BaseGameClient):
@@ -271,7 +78,7 @@ class GameClient(BaseGameClient):
         a different character or perform account-level actions."""
 
         while True:
-            _, available_actions_str = self._prepare_actions_menu_data(ACCOUNT_ACTIONS)
+            _, available_actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
             current_action = self._prompt_top_level_action(available_actions_str)
 
             if current_action is None:
@@ -324,7 +131,7 @@ class GameClient(BaseGameClient):
 
     def _build_character_action_menu(self, location_data):
         location_type = (location_data.get('content') or {}).get('type', None)
-        actions = list(LOCATION_ACTIONS_MAP.get(location_type, []))
+        actions = list(ActionTypeEnum.LOCATION_ACTIONS_MAP.get(location_type, []))
 
         if (location_data.get('interactions') or {}).get('transition'):
             actions.append(ActionTypeEnum.TRANSITION)
@@ -350,7 +157,7 @@ class GameClient(BaseGameClient):
                 print('Invalid input. Please try again.')
                 continue
 
-            actions_map, _ = self._prepare_actions_menu_data(ACCOUNT_ACTIONS)
+            actions_map, _ = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
             if idx not in actions_map:
                 print('Invalid input. Please try again.')
                 continue
@@ -437,6 +244,7 @@ class GameClient(BaseGameClient):
         print(f'Selected character {name}.')
         print(f'Level {character.level}, HP {character.hp}/{character.max_hp}, '
               f'Gold {character.gold}, Cooldown {character.cooldown}s.')
+        display_character_skin(character.skin)
 
         return character
 
@@ -517,7 +325,7 @@ class GameClient(BaseGameClient):
             url='/characters/create',
             data={
                 'name': name,
-                'skin': random.choice(SEX_SKIN_MAP[sex]).value,
+                'skin': random.choice(CharacterSexEnum.SEX_SKIN_MAP[sex]),
             },
         )
 
@@ -562,7 +370,7 @@ class GameClient(BaseGameClient):
         if not name:
             name = input('What is the name of the character to delete?: ')
 
-        confirm = self._prompt_yes_no(f'Are you sure you want to permanently delete {name}? (yes/no): ')
+        confirm = self._prompt_yes_no(f'Are you sure you want to permanently delete {name}?')
         if not confirm:
             print('Deletion cancelled.')
             return False
@@ -758,7 +566,7 @@ class GameClient(BaseGameClient):
         return monster.get('type') == 'boss'
 
     def _collect_boss_participants(self):
-        use_multi = self._prompt_yes_no('Boss detected. Use multi-character fight? (yes/no): ')
+        use_multi = self._prompt_yes_no('Boss detected. Use multi-character fight?')
         if not use_multi:
             return []
 
@@ -823,7 +631,7 @@ class GameClient(BaseGameClient):
         location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
         content = location_data.get('content') or {}
 
-        if content.get('type') != MapTypesEnum.WORKSHOP.value:
+        if content.get('type') != MapTypesEnum.WORKSHOP:
             print('You can\'t craft anything at this location.')
             return None
 
@@ -884,7 +692,7 @@ class GameClient(BaseGameClient):
 
     def _at_workshop(self):
         location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
-        return (location_data.get('content') or {}).get('type') == MapTypesEnum.WORKSHOP.value
+        return (location_data.get('content') or {}).get('type') == MapTypesEnum.WORKSHOP
 
     def _non_empty_inventory(self):
         return [slot for slot in self.character.inventory if slot.get('code')]
@@ -911,7 +719,7 @@ class GameClient(BaseGameClient):
     def _do_equip(self, inventory_map, chosen_item_idx):
         item_code = inventory_map[chosen_item_idx]
         item_data = self.get_item(item_code)
-        if item_data.get('type') not in EQUIP_TYPES:
+        if item_data['type'] not in ItemTypesEnum.EQUIP_TYPES:
             print('This item type is not equippable.')
             return
 
@@ -924,21 +732,21 @@ class GameClient(BaseGameClient):
             print('Could not determine a slot for this item.')
             return
 
-        self.character.equip(item_code, equipment_slot.value)
+        self.character.equip(item_code, equipment_slot)
 
     @staticmethod
     def _find_equipment_slot(item_data, item_code):
         return next(
             (s for s in EquipmentSlotsEnum
-             if s.value == item_data['type']
-             or s.value.startswith(item_data['type'])
-             or s.value == item_code),
+             if s == item_data['type']
+             or s.startswith(item_data['type'])
+             or s == item_code),
             None,
         )
 
     def character_unequip(self):
         slots_map, slots_map_str = self._prepare_actions_menu_data(
-            [action.value for action in EquipmentSlotsEnum]
+            [action for action in EquipmentSlotsEnum]
         )
         slot_idx = self._prompt_int(
             'Which slot do you want to unequip?\n'
@@ -1018,9 +826,9 @@ class GameClient(BaseGameClient):
 
     def character_change_skin(self):
         skins_map, skins_str = self._prepare_actions_menu_data(
-            [skin.value for skin in CharacterSkinsEnum]
+            [skin for skin in CharacterSkinsEnum]
         )
-        locked = ', '.join(s.value for s in SEASON_SKINS)
+        locked = ', '.join(s for s in CharacterSkinsEnum.SEASON_SKINS)
         sel = self._prompt_int(
             'What skin do you want to change to?\n'
             f'{skins_str}\n'
@@ -1279,7 +1087,7 @@ class GameClient(BaseGameClient):
         self.character.give_item(target, item_code, qty)
 
     def character_ge_buy_item(self):
-        orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.SELL.value)
+        orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.SELL)
         if not orders:
             print('No sell orders available to buy from.')
             return
@@ -1349,7 +1157,7 @@ class GameClient(BaseGameClient):
         self.character.ge_create_buy_order(item_code, qty, price)
 
     def character_ge_fill_order(self):
-        orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.BUY.value)
+        orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.BUY)
         if not orders:
             print('No buy orders to fill.')
             return

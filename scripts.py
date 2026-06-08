@@ -65,7 +65,7 @@ class _ScenarioHelpers(BaseClient):
 
     @classmethod
     def _sell_item(cls, character, item_name='', quantity=1):
-        ge = cls._get_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE.value)
+        ge = cls._get_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE)
 
         if ge:
             character.move(*ge[:2])
@@ -899,7 +899,7 @@ class RecyclingScenarios(_ScenarioHelpers):
     @classmethod
     def recycle_all_unequipped(cls, character, max_slots=999):
         ws = _ScenarioHelpers._get_location_for_content(character, content_code='weaponcrafting') \
-            or _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.WORKSHOP.value)
+            or             _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
 
         if ws:
             _ScenarioHelpers._recycle_slots(character, ws, max_slots)
@@ -941,7 +941,7 @@ class OtherScenarios(_ScenarioHelpers):
 
     @classmethod
     def do_quest_from_tasks_master(cls, character, quantity=1):
-        location = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.TASKS_MASTER.value)
+        location = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.TASKS_MASTER)
 
         if location:
             cls._run_task_master_quests(character, location, quantity)
@@ -957,7 +957,7 @@ class OtherScenarios(_ScenarioHelpers):
                 character.move(tasks_x, tasks_y)
                 character.get_task()
 
-            if character.task_type == TaskTypeEnum.MONSTERS.value:
+            if character.task_type == TaskTypeEnum.MONSTERS:
                 monster_location = _ScenarioHelpers._get_location_for_content(character, character.task)
 
                 if monster_location:
@@ -977,7 +977,7 @@ class OtherScenarios(_ScenarioHelpers):
 
     @classmethod
     def deposit_all_to_bank(cls, character):
-        bank = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.BANK.value)
+        bank = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.BANK)
 
         if bank:
             cls._deposit_inventory_to_bank(character, bank)
@@ -997,7 +997,7 @@ class OtherScenarios(_ScenarioHelpers):
 
     @classmethod
     def deposit_gold_to_bank(cls, character, quantity=None):
-        bank = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.BANK.value)
+        bank = _ScenarioHelpers._get_location_for_content(character, content_type=MapTypesEnum.BANK)
 
         if bank:
             cls._deposit_gold(character, bank, quantity)

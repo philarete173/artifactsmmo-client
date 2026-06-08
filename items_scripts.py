@@ -1,4 +1,4 @@
-from base import BaseClient
+from base import BaseClient, BaseGameClient
 from enums import MapTypesEnum
 
 
@@ -40,25 +40,6 @@ def _prompt_int(prompt, min_val=None, max_val=None):
 
         except ValueError:
             print('Please enter a whole number (or press Enter to go back).')
-
-
-def _prompt_yes_no(prompt, default=False):
-    """Read a y/n answer. Empty input means default."""
-    default_label = 'Y/n' if default else 'y/N'
-
-    while True:
-        raw = input(f'{prompt} [{default_label}]: ').strip().lower()
-
-        if raw == '':
-            return default
-
-        if raw in ('y', 'yes'):
-            return True
-
-        if raw in ('n', 'no'):
-            return False
-
-        print('Please answer y or n.')
 
 
 def _inventory_quantity(character, item_code):
@@ -212,7 +193,7 @@ def _craft_at_workshop(character, item_code, craft_skill, executions):
     character.crafting(item_code, executions)
 
 
-class ItemsScenarios(BaseClient):
+class ItemsScenarios(BaseGameClient):
     """Generic crafting scenarios driven by the /items API.
 
     A single ``craft_any_item`` scenario replaces the per-item ``craft_X``
@@ -266,7 +247,7 @@ class ItemsScenarios(BaseClient):
         if quantity is None:
             quantity = 1
 
-        sell = _prompt_yes_no('Sell the crafted items?', default=False)
+        sell = BaseGameClient()._prompt_yes_no('Sell the crafted items?')
         cls._execute_craft(character, item, quantity, sell)
 
     @classmethod
@@ -359,7 +340,7 @@ class ItemsScenarios(BaseClient):
 
     @classmethod
     def _sell_crafted(cls, character, item, quantity):
-        ge = _fetch_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE.value)
+        ge = _fetch_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE)
 
         if ge:
             character.move(*ge[:2])
