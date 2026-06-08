@@ -5,7 +5,7 @@ import sys
 from time import sleep
 
 from base import BaseGameClient
-from images import display_character_skin
+from images import display_image
 from enums import (
     CharacterSexEnum,
     CharacterSkinsEnum,
@@ -14,6 +14,7 @@ from enums import (
     MapTypesEnum,
     ItemTypesEnum,
     GEOrderTypeEnum,
+    ImageCategoryEnum,
 )
 from scripts import ScenariosStorage
 
@@ -138,7 +139,10 @@ class GameClient(BaseGameClient):
         y = location_data.get('y', '?')
         layer = location_data.get('layer', '?')
 
-        print(f'\n=== Location: {name} ({x}, {y}) [{layer}] ===')
+        print(f'\n=== Location: {name} ({x}, {y}) [{layer}] ===\n')
+        map_skin = location_data.get('skin', '')
+        if map_skin:
+            display_image(ImageCategoryEnum.MAPS, map_skin)
 
     def _build_character_action_menu(self, location_data):
         location_type = (location_data.get('content') or {}).get('type', None)
@@ -255,7 +259,7 @@ class GameClient(BaseGameClient):
         print(f'Selected character {name}.')
         print(f'Level {character.level}, HP {character.hp}/{character.max_hp}, '
               f'Gold {character.gold}, Cooldown {character.cooldown}s.')
-        display_character_skin(character.skin)
+        display_image(ImageCategoryEnum.CHARACTERS, character.skin)
 
         return character
 

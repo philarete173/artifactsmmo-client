@@ -11,9 +11,9 @@ except ImportError:
 
 
 CHAR_RAMP = ' .:-=+*#%@'
-SKIN_IMAGE_URL = 'https://artifactsmmo.com/images/characters/{skin}.png'
 DEFAULT_COLUMNS = 40
 REQUEST_TIMEOUT = 5
+IMAGE_URL_TEMPLATE = 'https://artifactsmmo.com/images/{category}/{key}.png'
 
 
 def _to_ascii(image, columns=DEFAULT_COLUMNS):
@@ -40,21 +40,27 @@ def _fetch_image(url):
     return Image.open(io.BytesIO(response.content))
 
 
-def display_character_skin(skin):
-    """Download and print an ASCII rendering of the character skin.
+def display_image(category, key):
+    """Download and print an ASCII rendering of an image from the game API.
 
-    Silently skips on missing skin code, missing Pillow, or any
+    Args:
+        category: image category from ImageCategoryEnum (e.g. 'characters', 'maps')
+        key: image identifier (e.g. skin name, map name)
+
+    Silently skips if Pillow is not installed or on any
     download/decode failure so the rest of the client keeps
-    working when the optional image dependency is not installed
-    or the image is unavailable."""
+    working when the optional image dependency is not available.
+    """
 
-    if not skin or not _PIL_AVAILABLE:
+    if not key or not _PIL_AVAILABLE:
         return
+
+    url = IMAGE_URL_TEMPLATE.format(category=category, key=key)
 
     try:
-        image = _fetch_image(SKIN_IMAGE_URL.format(skin=skin))
+        image = _fetch_image(url)
     except (requests.RequestException, ValueError, OSError) as error:
-        print(f'(Could not load skin image for {skin}: {error})')
+        print(f'(Could not load {category} image for {key}: {error})')
         return
 
-    print(_to_ascii(image))
+    print(f'{_to_ascii(image)}\n')

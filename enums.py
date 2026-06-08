@@ -405,3 +405,9 @@ class FightResultEnum(BaseEnumerate):
 
     WIN = 'win'
     LOSS = 'loss'
+
+
+class ImageCategoryEnum(BaseEnumerate):
+
+    CHARACTERS = 'characters'
+    MAPS = 'maps'
