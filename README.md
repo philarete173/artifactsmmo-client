@@ -27,6 +27,8 @@ source .venv/bin/activate  # for Windows use .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+`Pillow` is required only for the optional character skin ASCII art shown at character selection. The rest of the client works without it (Pillow is a soft dependency).
+
 ## Usage
 
 Before starting the client, you must specify your token in the config.ini configuration file (an example can be found in config.ini.example):
@@ -51,6 +53,8 @@ If there are no characters on the account, you will be prompted to create one.
 Game version: 1.0.0.
 Current season: Frozen Vows (#5), started 2025-12-01T00:00:00Z.
 ```
+
+When you select a character, the client prints the character stats and (if `Pillow` is installed) an ASCII rendering of the character's skin image, downloaded from `https://artifactsmmo.com/images/characters/{skin}.png`.
 
 Further interaction is realized by selecting the required menu item and transferring the necessary data for sending requests.
 The list of available actions depends on the type of location the character is currently in.
