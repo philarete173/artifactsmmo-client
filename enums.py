@@ -256,12 +256,12 @@ class ItemTypesEnum(BaseEnumerate):
 
 class EquipmentSlotsEnum(BaseEnumerate):
 
-    WEAPON = 'weapon'
-    SHIELD = 'shield'
     HELMET = 'helmet'
     BODY_ARMOR = 'body_armor'
     LEG_ARMOR = 'leg_armor'
     BOOTS = 'boots'
+    WEAPON = 'weapon'
+    SHIELD = 'shield'
     RING1 = 'ring1'
     RING2 = 'ring2'
     AMULET = 'amulet'
