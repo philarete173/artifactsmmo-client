@@ -2178,13 +2178,27 @@ class Character(BaseGameClient):
         return self._do_action('task/trade', {'code': code, 'quantity': quantity})
 
     def deposit_item(self, code='', quantity=1):
-        return self._do_action('bank/deposit/item', {'code': code, 'quantity': quantity})
+        return self._do_action('bank/deposit/item', [{'code': code, 'quantity': quantity}])
+
+    def deposit_items(self, items):
+        max_batch = 20
+        for index in range(0, len(items), max_batch):
+            batch = items[index:index + max_batch]
+            payload = [{'code': code, 'quantity': quantity} for code, quantity in batch]
+            self._do_action('bank/deposit/item', payload)
 
     def deposit_gold(self, quantity=0):
         return self._do_action('bank/deposit/gold', {'quantity': quantity})
 
     def withdraw_item(self, code='', quantity=1):
-        return self._do_action('bank/withdraw/item', {'code': code, 'quantity': quantity})
+        return self._do_action('bank/withdraw/item', [{'code': code, 'quantity': quantity}])
+
+    def withdraw_items(self, items):
+        max_batch = 20
+        for index in range(0, len(items), max_batch):
+            batch = items[index:index + max_batch]
+            payload = [{'code': code, 'quantity': quantity} for code, quantity in batch]
+            self._do_action('bank/withdraw/item', payload)
 
     def withdraw_gold(self, quantity=0):
         return self._do_action('bank/withdraw/gold', {'quantity': quantity})
