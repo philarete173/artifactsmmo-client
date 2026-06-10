@@ -123,9 +123,9 @@ class GameClient(BaseGameClient):
 
             choice = self._prompt_int(
                 'What do you want to do?\n'
-                '1 - basic actions\n'
-                '2 - advanced actions\n'
-                '3 - character actions\n'
+                '1 - Basic actions\n'
+                '2 - Advanced actions\n'
+                '3 - Character actions\n'
                 'Please type a number: '
             )
             if choice is None:
