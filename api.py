@@ -2056,9 +2056,80 @@ class Character(BaseGameClient):
         data = {}
         if participants:
             data['participants'] = participants
+
         return self._do_action('fight', data)
 
+    def _get_gathering_skill_at_location(self):
+        response = self._get(url=f'/maps/{self.layer}/{self.x}/{self.y}')
+        if response.status_code != 200:
+            return None
+
+        map_data = response.json().get('data', {})
+        content = map_data.get('interactions', {}).get('content', {})
+        if content.get('type') != 'resource':
+            return None
+
+        resource_code = content.get('code', '')
+        if not resource_code:
+            return None
+
+        resource_response = self._get(url=f'/resources/{resource_code}')
+        if resource_response.status_code != 200:
+            return None
+
+        return resource_response.json().get('data', {}).get('skill')
+
+    def _equip_best_gathering_weapon(self, skill_code):
+        if not skill_code:
+            return
+
+        current_weapon = getattr(self, 'weapon_slot', None)
+        best_code = None
+        best_value = 0
+
+        for slot in self.inventory or []:
+            code = slot.get('code')
+            if not code or code == current_weapon:
+                continue
+
+            item_response = self._get(url=f'/items/{code}')
+            if item_response.status_code != 200:
+                continue
+
+            item = item_response.json().get('data', {})
+            if item.get('type') != 'weapon':
+                continue
+
+            for effect in item.get('effects') or []:
+                if effect.get('code') == skill_code:
+                    value = abs(effect.get('value', 0))
+                    if value > best_value:
+                        best_value = value
+                        best_code = code
+                    break
+
+        if best_code is None:
+            return
+
+        current_value = 0
+        if current_weapon:
+            item_response = self._get(url=f'/items/{current_weapon}')
+            if item_response.status_code == 200:
+                current_item = item_response.json().get('data', {})
+                for effect in current_item.get('effects') or []:
+                    if effect.get('code') == skill_code:
+                        current_value = abs(effect.get('value', 0))
+                        break
+
+        if best_value > current_value:
+            print(f'Equipping {best_code} (+{best_value} {skill_code})...')
+            self.equip(best_code, 'weapon')
+
     def gathering(self):
+        skill_code = self._get_gathering_skill_at_location()
+        if skill_code:
+            self._equip_best_gathering_weapon(skill_code)
+
         return self._do_action('gathering')
 
     def crafting(self, code='', quantity=1):
