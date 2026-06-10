@@ -79,11 +79,16 @@ class GameClient(BaseGameClient):
         a different character or perform account-level actions."""
 
         while True:
-            _, available_actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
-            current_action = self._prompt_top_level_action(available_actions_str)
-
-            if current_action is None:
+            actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
+            idx = self._prompt_int(
+                'What do you want to do at the account level?\n'
+                f'{actions_str}\n'
+                'Please type a number: '
+            )
+            if idx is None or idx not in actions_map:
                 continue
+
+            current_action = actions_map[idx]
 
             if current_action == ActionTypeEnum.SELECT_CHARACTER:
                 self._choose_character()
@@ -108,28 +113,211 @@ class GameClient(BaseGameClient):
             print(f'Something went wrong. Error: {error}. Please try again.')
 
     def character_action_loop(self):
-        """Per-character action menu, driven by the location's content type."""
+        """Per-character action menu with 3 top-level categories."""
 
         while True:
-            current_location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
+            current_location_data = self.get_location_data(
+                self.character.layer, self.character.x, self.character.y,
+            )
             self._print_location_info(current_location_data)
-            available_actions, available_actions_str = self._build_character_action_menu(current_location_data)
-            current_action = self._prompt_character_action(available_actions, available_actions_str)
 
-            if current_action is None:
+            choice = self._prompt_int(
+                'What do you want to do?\n'
+                '1 - basic actions\n'
+                '2 - advanced actions\n'
+                '3 - character actions\n'
+                'Please type a number: '
+            )
+            if choice is None:
                 continue
 
-            method = self.main_menu_map.get(current_action)
-
-            if method is None:
-                print('This is not a valid action!')
-            else:
-                try:
-                    method()
-                except Exception as error:
-                    print(f'Something went wrong. Error: {error}. Please try again.')
+            if choice == 1:
+                self._handle_basic_actions(current_location_data)
+            elif choice == 2:
+                self._handle_advanced_actions()
+            elif choice == 3:
+                self._handle_character_actions()
 
             print('')
+
+    def _handle_basic_actions(self, location_data):
+        location_type = (location_data.get('content') or {}).get('type', None)
+        actions = list(ActionTypeEnum.LOCATION_ACTIONS_MAP.get(location_type, []))
+
+        if (location_data.get('interactions') or {}).get('transition'):
+            actions.append(ActionTypeEnum.TRANSITION)
+
+        actions_map, actions_str = self._prepare_actions_menu_data(actions)
+        idx = self._prompt_int(
+            'Basic actions:\n'
+            f'{actions_str}\n'
+            'Please type a number: '
+        )
+        if idx is None or idx not in actions_map:
+            return
+
+        current_action = actions_map[idx]
+        method = self.main_menu_map.get(current_action)
+        if method is None:
+            print('This is not a valid action!')
+        else:
+            try:
+                method()
+            except Exception as error:
+                print(f'Something went wrong. Error: {error}. Please try again.')
+
+    def _handle_advanced_actions(self):
+        actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ADVANCED_ACTIONS)
+        idx = self._prompt_int(
+            'Advanced actions:\n'
+            f'{actions_str}\n'
+            'Please type a number: '
+        )
+        if idx is None or idx not in actions_map:
+            return
+
+        current_action = actions_map[idx]
+        method = self.main_menu_map.get(current_action)
+        if method is None:
+            print('This is not a valid action!')
+        else:
+            try:
+                method()
+            except Exception as error:
+                print(f'Something went wrong. Error: {error}. Please try again.')
+
+    def _handle_character_actions(self):
+        actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.CHARACTER_ACTIONS)
+        idx = self._prompt_int(
+            'Character actions:\n'
+            f'{actions_str}\n'
+            'Please type a number: '
+        )
+        if idx is None or idx not in actions_map:
+            return
+
+        current_action = actions_map[idx]
+        if current_action == ActionTypeEnum.STATS:
+            self._show_character_stats()
+        elif current_action == ActionTypeEnum.SKILLS:
+            self._show_character_skills()
+        elif current_action == ActionTypeEnum.INVENTORY:
+            self._show_character_inventory()
+        elif current_action == ActionTypeEnum.EQUIPMENT:
+            self._show_character_equipment()
+        elif current_action == ActionTypeEnum.CHANGE_SKIN:
+            self.character_change_skin()
+
+    def _show_character_stats(self):
+        print('=== Character Stats ===')
+        print(f'Level {self.character.level} ({self.character.xp} / {self.character.max_xp})')
+        print('Core Stats:')
+        print(f'  HP: {self.character.hp} / {self.character.max_hp}')
+        print(f'  Haste: {self.character.haste}')
+        print(f'  Critical Strike: {self.character.critical_strike}')
+        print(f'  Initiative: {self.character.initiative}')
+        print(f'  Threat: {self.character.threat}')
+        print(f'  Prospecting: {self.character.prospecting}')
+        print(f'  Wisdom: {self.character.wisdom}')
+        print(f'  Damage: {self.character.dmg}%')
+        print('Attack:')
+        print(f'  Fire: {self.character.attack_fire}')
+        print(f'  Earth: {self.character.attack_earth}')
+        print(f'  Water: {self.character.attack_water}')
+        print(f'  Air: {self.character.attack_air}')
+        print('Elemental Damage:')
+        print(f'  Fire: {self.character.dmg_fire}%')
+        print(f'  Earth: {self.character.dmg_earth}%')
+        print(f'  Water: {self.character.dmg_water}%')
+        print(f'  Air: {self.character.dmg_air}%')
+        print('Resistance:')
+        print(f'  Fire: {self.character.res_fire}%')
+        print(f'  Earth: {self.character.res_earth}%')
+        print(f'  Water: {self.character.res_water}%')
+        print(f'  Air: {self.character.res_air}%')
+        print('Effects:')
+        effects = getattr(self.character, 'effects', None) or []
+        if effects:
+            for effect in effects:
+                print(f'  {effect.get("code", "?")}: {effect.get("value", 0)}')
+        else:
+            print('  (none)')
+
+    def _show_character_skills(self):
+        print('=== Character Skills ===')
+        skills = [
+            ('Mining', 'mining'),
+            ('Woodcutting', 'woodcutting'),
+            ('Fishing', 'fishing'),
+            ('Weaponcrafting', 'weaponcrafting'),
+            ('Gearcrafting', 'gearcrafting'),
+            ('Jewelrycrafting', 'jewelrycrafting'),
+            ('Cooking', 'cooking'),
+            ('Alchemy', 'alchemy'),
+        ]
+        for skill_name, skill_code in skills:
+            skill_level = getattr(self.character, f'{skill_code}_level', 0)
+            current_xp = getattr(self.character, f'{skill_code}_xp', 0)
+            max_skill_xp = getattr(self.character, f'{skill_code}_max_xp', 0)
+            print(f'{skill_name}: Level {skill_level} ({current_xp} / {max_skill_xp})')
+
+    def _show_character_inventory(self):
+        inventory = getattr(self.character, 'inventory', None) or []
+        max_items = getattr(self.character, 'inventory_max_items', 0)
+        total_quantity = sum(slot.get('quantity', 0) for slot in inventory if slot.get('code'))
+        filled_slots = sum(1 for slot in inventory if slot.get('code'))
+
+        unique_codes = set(slot.get('code') for slot in inventory if slot.get('code'))
+        print('Loading items data...', end='\r')
+        item_names = {}
+        for item_code in unique_codes:
+            item = self.get_item(item_code)
+            item_names[item_code] = (item or {}).get('name', item_code)
+
+        print('=== Character Inventory ===')
+        print(f'Fill: {total_quantity} / {max_items} (slots: {filled_slots})')
+        for slot in inventory:
+            item_code = slot.get('code')
+            if not item_code:
+                continue
+            quantity = slot.get('quantity', 1)
+            item_name = item_names.get(item_code, item_code)
+            print(f'  {item_name} x{quantity}')
+
+    def _show_character_equipment(self):
+        effects_data = self.get_effects()
+        effect_names = {effect['code']: effect['name'] for effect in effects_data if 'code' in effect}
+
+        slot_entries = []
+        unique_codes = set()
+        for slot in EquipmentSlotsEnum:
+            attr = f'{slot}_slot'
+            label = re.sub(r'(\d)', r' \1', slot.replace('_', ' ')).capitalize()
+            item_code = getattr(self.character, attr, None)
+            slot_entries.append((label, item_code))
+            if item_code:
+                unique_codes.add(item_code)
+
+        print('Loading items data...', end='\r')
+        items_data = {}
+        for code in unique_codes:
+            items_data[code] = self.get_item(code)
+
+        print('=== Character Equipment ===')
+        for label, item_code in slot_entries:
+            if item_code:
+                item = items_data.get(item_code, {})
+                item_name = item.get('name', item_code)
+                print(f'  {label}: {item_name}')
+                effects = item.get('effects', []) or []
+                if effects:
+                    for effect in effects:
+                        effect_code = effect.get('code', '')
+                        value = effect.get('value', 0)
+                        effect_name = effect_names.get(effect_code, effect_code)
+                        print(f'    {effect_name}: {value}')
+            else:
+                print(f'  {label}: (empty)')
 
     def _print_location_info(self, location_data):
         """Print current location information: coordinates and name."""
@@ -143,68 +331,6 @@ class GameClient(BaseGameClient):
         map_skin = location_data.get('skin', '')
         if map_skin:
             display_image(ImageCategoryEnum.MAPS, map_skin)
-
-    def _build_character_action_menu(self, location_data):
-        location_type = (location_data.get('content') or {}).get('type', None)
-        actions = list(ActionTypeEnum.LOCATION_ACTIONS_MAP.get(location_type, []))
-
-        if (location_data.get('interactions') or {}).get('transition'):
-            actions.append(ActionTypeEnum.TRANSITION)
-
-        return self._prepare_actions_menu_data(actions)
-
-    def _prompt_top_level_action(self, available_actions_str):
-        """Read and validate the user's top-level menu choice. Returns
-        the chosen ActionTypeEnum, or None if the input was invalid
-        (so the caller can `continue` its loop)."""
-
-        result = None
-        done = False
-
-        while not done:
-            try:
-                idx = int(input(
-                    'What do you want to do at the account level?\n'
-                    f'{available_actions_str}\n'
-                    'Please type a number: '
-                ))
-            except ValueError:
-                print('Invalid input. Please try again.')
-                continue
-
-            actions_map, _ = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
-            if idx not in actions_map:
-                print('Invalid input. Please try again.')
-                continue
-
-            result = actions_map[idx]
-            done = True
-
-        return result
-
-    def _prompt_character_action(self, available_actions, available_actions_str):
-        result = None
-        done = False
-
-        while not done:
-            try:
-                idx = int(input(
-                    'What do you want to do?\n'
-                    f'{available_actions_str}\n'
-                    'Please type a number: '
-                ))
-            except ValueError:
-                print('Invalid input. Please try again.')
-                continue
-
-            if idx not in available_actions:
-                print('Invalid input. Please try again.')
-                continue
-
-            result = available_actions[idx]
-            done = True
-
-        return result
 
     def _choose_character(self):
         """Pick a character and bind it (plus its scenario storage) to this
@@ -463,7 +589,7 @@ class GameClient(BaseGameClient):
 
         items_map = {idx: item for idx, item in enumerate(iterable, 1)}
         items_map_str = "\n".join(
-            f"{idx} - {_display(name).replace('_', ' ')}" for idx, name in items_map.items()
+            f"{idx} - {_display(name).replace('_', ' ').capitalize()}" for idx, name in items_map.items()
         )
 
         return items_map, items_map_str
@@ -1792,6 +1918,7 @@ class Character(BaseGameClient):
         'attack_fire', 'attack_earth', 'attack_water', 'attack_air',
         'dmg', 'dmg_fire', 'dmg_earth', 'dmg_water', 'dmg_air',
         'res_fire', 'res_earth', 'res_water', 'res_air',
+        'effects',
         'x', 'y', 'layer', 'map_id',
         'cooldown', 'cooldown_expiration',
         'weapon_slot', 'shield_slot', 'helmet_slot', 'body_armor_slot',
