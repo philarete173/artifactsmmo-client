@@ -1025,7 +1025,6 @@ class ScenariosStorage(BaseClient):
     SCENARIO_COLLECTIONS = (
         ItemsScenarios,
         RecyclingScenarios,
-        OtherScenarios,
     )
 
     def __init__(self, character):
@@ -1038,11 +1037,21 @@ class ScenariosStorage(BaseClient):
             for collection in self.SCENARIO_COLLECTIONS
         }
 
+        for method in OtherScenarios.get_scenarios(self.character):
+            name = method.__name__.replace('_', ' ').capitalize()
+            self.scenarios_category_map[name] = self._build_single_factory(method)
+
     def _build_category_factory(self, collection):
         def factory():
             return [
                 functools.partial(method, self.character)
                 for method in collection.get_scenarios(self.character)
             ]
+
+        return factory
+
+    def _build_single_factory(self, method):
+        def factory():
+            return [functools.partial(method, self.character)]
 
         return factory
