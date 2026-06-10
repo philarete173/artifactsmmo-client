@@ -100,6 +100,10 @@ class ActionTypeEnum(BaseEnumerate):
     DELETE_ITEM = 'delete item'
     USE_ITEM = 'use item'
     REST = 'rest'
+    STATS = 'stats'
+    SKILLS = 'skills'
+    INVENTORY = 'inventory'
+    EQUIPMENT = 'equipment'
     CHANGE_SKIN = 'change skin'
     NEW_TASK = 'new task'
     COMPLETE_TASK = 'complete task'
@@ -139,75 +143,59 @@ class ActionTypeEnum(BaseEnumerate):
         SELECT_CHARACTER,
     ]
 
+    CHARACTER_ACTIONS = [
+        STATS,
+        SKILLS,
+        INVENTORY,
+        EQUIPMENT,
+        CHANGE_SKIN,
+    ]
 
-    GLOBAL_ACTIONS = [
+    LOCATION_ACTIONS = [
         MOVE,
         EQUIP,
         UNEQUIP,
         USE_ITEM,
         REST,
-        CHANGE_SKIN,
+        USE_SCENARIO,
+    ]
+
+    ADVANCED_ACTIONS = [
         SHOW_BANK,
         SHOW_PENDING_ITEMS,
         SHOW_GE_ORDERS,
         CLAIM_PENDING_ITEM,
         GIVE_GOLD,
         GIVE_ITEM,
-        USE_SCENARIO,
-    ]
-
-    AVAILABLE_ACTIONS = GLOBAL_ACTIONS + [
-        FIGHT,
-        GATHERING,
-        CRAFTING,
-        RECYCLING,
-        NEW_TASK,
-        COMPLETE_TASK,
-        CANCEL_TASK,
-        EXCHANGE_TASK,
-        TRADE_TASK,
-        BUY_NPC_ITEM,
-        SELL_NPC_ITEM,
-        BUY_BANK_EXPANSION,
-        DEPOSIT_BANK,
-        DEPOSIT_BANK_GOLD,
-        WITHDRAW_BANK,
-        WITHDRAW_GOLD,
-        BUY_GE_ITEM,
-        CANCEL_GE_ORDER,
-        CREATE_GE_BUY_ORDER,
-        CREATE_GE_SELL_ORDER,
-        FILL_GE_ORDER,
-        DELETE_ITEM,
     ]
 
     LOCATION_ACTIONS_MAP = {
-        None: GLOBAL_ACTIONS,
-        MapTypesEnum.MONSTER: GLOBAL_ACTIONS + [FIGHT],
-        MapTypesEnum.RESOURCE: GLOBAL_ACTIONS + [GATHERING],
-        MapTypesEnum.WORKSHOP: GLOBAL_ACTIONS + [CRAFTING, RECYCLING],
-        MapTypesEnum.BANK: GLOBAL_ACTIONS + [
+        None: LOCATION_ACTIONS,
+        MapTypesEnum.MONSTER: LOCATION_ACTIONS + [FIGHT],
+        MapTypesEnum.RESOURCE: LOCATION_ACTIONS + [GATHERING],
+        MapTypesEnum.WORKSHOP: LOCATION_ACTIONS + [CRAFTING, RECYCLING],
+        MapTypesEnum.BANK: LOCATION_ACTIONS + [
             DEPOSIT_BANK,
             DEPOSIT_BANK_GOLD,
             WITHDRAW_BANK,
             WITHDRAW_GOLD,
             BUY_BANK_EXPANSION,
         ],
-        MapTypesEnum.GRAND_EXCHANGE: GLOBAL_ACTIONS + [
+        MapTypesEnum.GRAND_EXCHANGE: LOCATION_ACTIONS + [
             BUY_GE_ITEM,
             CANCEL_GE_ORDER,
             CREATE_GE_BUY_ORDER,
             CREATE_GE_SELL_ORDER,
             FILL_GE_ORDER,
         ],
-        MapTypesEnum.TASKS_MASTER: GLOBAL_ACTIONS + [
+        MapTypesEnum.TASKS_MASTER: LOCATION_ACTIONS + [
             NEW_TASK,
             COMPLETE_TASK,
             CANCEL_TASK,
             EXCHANGE_TASK,
             TRADE_TASK,
         ],
-        MapTypesEnum.NPC: GLOBAL_ACTIONS + [
+        MapTypesEnum.NPC: LOCATION_ACTIONS + [
             BUY_NPC_ITEM,
             SELL_NPC_ITEM,
         ],
