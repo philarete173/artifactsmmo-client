@@ -9,11 +9,10 @@ class _EnumMeta(type):
     """Metaclass to make enum classes iterable over their string values."""
 
     def __iter__(cls):
-        for attr_name in dir(cls):
+        for attr_name, attr_value in cls.__dict__.items():
             if attr_name.startswith('_'):
                 continue
 
-            attr_value = getattr(cls, attr_name)
             if isinstance(attr_value, str):
                 yield attr_value
 
