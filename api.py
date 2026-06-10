@@ -2053,6 +2053,65 @@ class Character(BaseGameClient):
         return self._do_action('transition')
 
     def fight(self, participants=None):
+        if self.hp < self.max_hp / 2:
+            print(f'HP too low ({self.hp}/{self.max_hp}). Resting...')
+            self.rest()
+
+        inventory = getattr(self, 'inventory', None) or []
+        max_items = getattr(self, 'inventory_max_items', 100)
+        total_quantity = sum(s.get('quantity', 0) for s in inventory if s.get('code'))
+        fill_ratio = total_quantity / max_items if max_items else 0
+
+        if fill_ratio > 0.9:
+            unique_codes = set()
+            for entry in inventory:
+                code = entry.get('code')
+                if code:
+                    unique_codes.add(code)
+
+            equip_types = set(ItemTypesEnum.EQUIP_TYPES)
+            codes_to_deposit = []
+
+            for code in unique_codes:
+                response = self._get(url=f'/items/{code}')
+                if response.status_code == 200:
+                    item_type = response.json().get('data', {}).get('type')
+                    if item_type not in equip_types:
+                        codes_to_deposit.append(code)
+
+            if codes_to_deposit:
+                origin_x, origin_y = self.x, self.y
+                at_bank = False
+
+                location = self._get(url=f'/maps/{self.layer}/{self.x}/{self.y}')
+                if location.status_code == 200:
+                    content_type = (location.json().get('data', {}).get('content') or {}).get('type')
+                    at_bank = content_type == 'bank'
+
+                if not at_bank:
+                    banks = self._get(url='/maps', data={'content_type': 'bank', 'layer': self.layer, 'size': 100})
+                    if banks.status_code == 200:
+                        bank_list = banks.json().get('data', [])
+                        if bank_list:
+                            bank = bank_list[0]
+                            print(f'Moving to bank ({bank["x"]}, {bank["y"]}) to deposit...')
+                            self.move(bank['x'], bank['y'])
+
+                inv_by_code = {}
+                for entry in (getattr(self, 'inventory', None) or []):
+                    c = entry.get('code')
+                    if c:
+                        inv_by_code[c] = inv_by_code.get(c, 0) + entry.get('quantity', 0)
+
+                print(f'Inventory {total_quantity}/{max_items} (>90%). Depositing...')
+                deposit_list = [(code, inv_by_code.get(code, 0)) for code in codes_to_deposit if inv_by_code.get(code, 0) > 0]
+                if deposit_list:
+                    self.deposit_items(deposit_list)
+
+                if not at_bank and (self.x != origin_x or self.y != origin_y):
+                    print('Moving back to original location...')
+                    self.move(origin_x, origin_y)
+
         data = {}
         if participants:
             data['participants'] = participants
