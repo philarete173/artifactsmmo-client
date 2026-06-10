@@ -53,6 +53,14 @@ class CharacterSexEnum(BaseEnumerate):
     }
 
 
+class CharacterDataBlocksEnum(BaseEnumerate):
+
+    INVENTORY = 'inventory'
+    EQUIPMENT = 'equipment'
+    STATS = 'stats'
+    SKILLS = 'skills'
+
+
 class MapTypesEnum(BaseEnumerate):
 
     MONSTER = 'monster'
