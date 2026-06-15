@@ -15,6 +15,7 @@ from enums import (
     ItemTypesEnum,
     GEOrderTypeEnum,
     ImageCategoryEnum,
+    MapLayerEnum,
 )
 from scripts import ScenariosStorage
 
@@ -141,7 +142,7 @@ class GameClient(BaseGameClient):
             print('')
 
     def _handle_basic_actions(self, location_data):
-        location_type = (location_data.get('content') or {}).get('type', None)
+        location_type = ((location_data.get('interactions') or {}).get('content') or {}).get('type', None)
         actions = list(ActionTypeEnum.LOCATION_ACTIONS_MAP.get(location_type, []))
 
         if (location_data.get('interactions') or {}).get('transition'):
@@ -628,14 +629,13 @@ class GameClient(BaseGameClient):
         return result
 
     def character_movement(self):
-        layer = getattr(self.character, 'layer', 'overworld')
+        layer = getattr(self.character, 'layer', MapLayerEnum.OVERWORLD)
         maps = self.get_maps_data(layer=layer)
         available_types_map, available_types_str = self._build_location_type_menu(maps)
 
         location_type_idx = self._prompt_int(
             'What type of location do you want to move to?\n'
             f'{available_types_str}\n'
-            '0 - any type\n'
             'Please type a number: '
         )
 
@@ -649,7 +649,11 @@ class GameClient(BaseGameClient):
         self._prompt_and_move(chosen_locations)
 
     def _build_location_type_menu(self, maps):
-        available_types = sorted({(m.get('content') or {}).get('type', '') for m in maps if m.get('content')})
+        available_types = sorted(
+            map_type
+            for map_type in{((_map.get('interactions') or {}).get('content') or {}).get('type', '') for _map in maps}
+            if map_type
+        )
         return self._prepare_actions_menu_data(available_types)
 
     def _select_destinations(self, maps, available_types_map, location_type_idx):
@@ -657,11 +661,18 @@ class GameClient(BaseGameClient):
             return maps
 
         chosen_location_type = available_types_map[location_type_idx]
-        return [m for m in maps if (m.get('content') or {}).get('type') == chosen_location_type]
+        return [
+            _map
+            for _map in maps
+            if ((_map.get('interactions') or {}).get('content') or {}).get('type', '') == chosen_location_type
+        ]
 
     def _prompt_and_move(self, chosen_locations):
         chosen_locations_map, chosen_locations_str = self._prepare_actions_menu_data(
-            [(m.get('content') or {}).get('code') or f"({m['x']},{m['y']})" for m in chosen_locations]
+            [
+                f'{_map.get("interactions", {}).get("content", {}).get("code")} (Location {_map["x"]}, {_map["y"]})'
+                for _map in chosen_locations
+            ]
         )
 
         if len(chosen_locations_map) == 0:
