@@ -302,7 +302,8 @@ class ItemsScenarios(BaseGameClient):
 
     @classmethod
     def _execute_craft(cls, character, item, quantity, sell):
-        cls._craft_recursive(character, item, quantity, depth=0)
+        for iteration in range(quantity):
+            cls._craft_recursive(character, item, 1, depth=0)
 
         if sell:
             cls._sell_crafted(character, item, quantity)
