@@ -133,14 +133,16 @@ def _fetch_location_for_content(character, content_code='', content_type=''):
 
 
 def _gather_loop(character, item_code, quantity):
-    """Gather at current location until we have at least `quantity` of `item_code`."""
-    while _inventory_quantity(character, item_code) < quantity:
+    """Gather at current location until we have at least `quantity` more of `item_code`."""
+    target = _inventory_quantity(character, item_code) + quantity
+    while _inventory_quantity(character, item_code) < target:
         character.gathering()
 
 
 def _fight_loop(character, item_code, quantity):
-    """Fight at current location until we have at least `quantity` of `item_code`."""
-    while _inventory_quantity(character, item_code) < quantity:
+    """Fight at current location until we have at least `quantity` more of `item_code`."""
+    target = _inventory_quantity(character, item_code) + quantity
+    while _inventory_quantity(character, item_code) < target:
         character.fight()
 
 
@@ -181,6 +183,36 @@ def _gather_base_item(character, item_code, quantity):
         return
 
     print(f'Warning: don\'t know where to get {item_code}.')
+
+
+def _fetch_bank_quantity(character, item_code):
+    """Check how many of ``item_code`` are in the character's bank."""
+    response = character._get(url='/my/bank/items', data={'item_code': item_code})
+    if response.status_code == 200:
+        for slot in response.json().get('data', []):
+            if slot.get('code') == item_code:
+                return slot.get('quantity', 0)
+    return 0
+
+
+def _withdraw_from_bank(character, item_code, needed):
+    """Move to the bank and withdraw up to ``needed`` of ``item_code``.
+
+    Returns the amount actually withdrawn (may be less than needed if the
+    bank doesn't have enough).
+    """
+    bank = _fetch_location_for_content(character, content_type=MapTypesEnum.BANK)
+    if not bank:
+        return 0
+
+    bank_qty = _fetch_bank_quantity(character, item_code)
+    if bank_qty == 0:
+        return 0
+
+    character.move(*bank[:2])
+    withdraw_qty = min(bank_qty, needed)
+    character.withdraw_item(item_code, withdraw_qty)
+    return withdraw_qty
 
 
 def _craft_at_workshop(character, item_code, craft_skill, executions):
@@ -335,7 +367,24 @@ class ItemsScenarios(BaseGameClient):
 
                 continue
 
-            cls._craft_recursive(character, req_item, req_qty, depth + 1)
+            # Check how many we already have in inventory
+            inv_qty = _inventory_quantity(character, req_code)
+            if inv_qty >= req_qty:
+                print(f'  Already have {inv_qty}x {req_code} in inventory, skipping.')
+                continue
+
+            needed = req_qty - inv_qty
+
+            # Try to withdraw the deficit from bank
+            withdrawn = _withdraw_from_bank(character, req_code, needed)
+            if withdrawn:
+                print(f'  Withdrew {withdrawn}x {req_code} from bank.')
+                needed -= withdrawn
+
+            if needed <= 0:
+                continue
+
+            cls._craft_recursive(character, req_item, needed, depth + 1)
 
         _craft_at_workshop(character, item['code'], craft['skill'], executions)
 
