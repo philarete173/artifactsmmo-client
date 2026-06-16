@@ -879,22 +879,40 @@ class GameClient(BaseGameClient):
             print(f"You need to be level {item_data['level']} to equip this item.")
             return
 
-        equipment_slot = self._find_equipment_slot(item_data, item_code)
-        if equipment_slot is None:
+        matching_slots = [
+            s for s in EquipmentSlotsEnum
+            if s == item_data['type']
+            or s.startswith(item_data['type'])
+            or s == item_code
+        ]
+
+        if not matching_slots:
             print('Could not determine a slot for this item.')
             return
 
-        self.character.equip(item_code, equipment_slot)
+        if len(matching_slots) == 1:
+            equip_slot = matching_slots[0]
+        else:
+            slot_options = [
+                {
+                    'code': s,
+                    'name': f'{s} (occupied: {getattr(self.character, f"{s}_slot", "")})'
+                            if getattr(self.character, f'{s}_slot', None)
+                            else f'{s} (empty)',
+                }
+                for s in matching_slots
+            ]
+            slots_map, slots_map_str = self._prepare_actions_menu_data(slot_options)
+            chosen_idx = self._prompt_int(
+                'Which slot do you want to equip to?\n'
+                f'{slots_map_str}\n'
+                'Please type a number: '
+            )
+            if chosen_idx is None:
+                return
+            equip_slot = slots_map[chosen_idx]['code']
 
-    @staticmethod
-    def _find_equipment_slot(item_data, item_code):
-        return next(
-            (s for s in EquipmentSlotsEnum
-             if s == item_data['type']
-             or s.startswith(item_data['type'])
-             or s == item_code),
-            None,
-        )
+        self.character.equip(item_code, equip_slot)
 
     def character_unequip(self):
         slots_map, slots_map_str = self._prepare_actions_menu_data(
