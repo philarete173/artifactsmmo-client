@@ -844,7 +844,7 @@ class GameClient(BaseGameClient):
 
     def _at_workshop(self):
         location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
-        return (location_data.get('content') or {}).get('type') == MapTypesEnum.WORKSHOP
+        return location_data.get('interactions', {}).get('content', {}).get('type') == MapTypesEnum.WORKSHOP
 
     def _non_empty_inventory(self):
         return [slot for slot in self.character.inventory if slot.get('code')]
@@ -2029,13 +2029,60 @@ class Character(BaseGameClient):
         if last_action_data.status_code == 200:
             logs = last_action_data.json().get('data', [])
             if logs:
-                print(logs[0].get('description', ''))
+                log = logs[0]
+                print(log.get('description', ''))
+                self._print_action_details(log)
             else:
                 print('No recent actions.')
         elif error_block := last_action_data.json().get('error'):
             print(f'Can\'t get last action. {error_block.get("message", "Unknown error.")}.')
 
         self.refresh()
+
+    def _print_action_details(self, source):
+        """Extract and print XP, gold, items from log or action response."""
+        details = []
+        xp = None
+        gold = None
+        items = None
+
+        # Log format: {xp, gold, items}
+        if 'xp' in source or 'gold' in source or 'items' in source:
+            xp = source.get('xp')
+            gold = source.get('gold')
+            items = source.get('items')
+        # Skill action (gathering/crafting): {details: {xp, items}}
+        elif 'details' in source:
+            det = source.get('details', {})
+            xp = det.get('xp')
+            items = det.get('items')
+        # Recycling: {details: {items}} (no XP)
+        # Fight: {fight: {characters: [{xp, gold, drops}]}}
+        elif 'fight' in source:
+            fight = source.get('fight', {})
+            chars = fight.get('characters', [])
+            if chars:
+                main = chars[0]
+                xp = main.get('xp')
+                gold = main.get('gold')
+                items = main.get('drops')
+
+        if xp is not None:
+            details.append(f'Earned XP: +{xp}')
+
+        if gold is not None:
+            details.append(f'Recieved Gold: {gold:+d}')
+
+        if items:
+            items_data = []
+            for item in items:
+                code = item.get('code', '?')
+                qty = item.get('quantity', 1)
+                items_data.append(f'{code} {qty:+d}')
+
+            details.append(f"Obtained Items: {', '.join(items_data)}" )
+        if details:
+            print('  ' + '\n  '.join(details))
 
     def _do_action(self, action_name='', action_data=None):
         if action_data is None:
@@ -2062,6 +2109,7 @@ class Character(BaseGameClient):
                 sleep(1)
 
             print(' ' * 40, end='\r')
+            self._print_action_details(data)
             self._get_last_action()
             result = data
         elif error_block := action_request.json().get('error'):
