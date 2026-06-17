@@ -279,8 +279,15 @@ class ItemsScenarios(BaseGameClient):
         if quantity is None:
             quantity = 1
 
-        sell = BaseGameClient()._prompt_yes_no('Sell the crafted items?')
-        cls._execute_craft(character, item, quantity, sell)
+        post_craft = cls._prompt_post_craft()
+        cls._execute_craft(character, item, quantity, post_craft)
+
+    @classmethod
+    def _prompt_post_craft(cls):
+        choice = input('After crafting: [s]ell, [r]ecycle, [n]othing? ').strip().lower()
+        if choice in ('s', 'r'):
+            return choice
+        return 'n'
 
     @classmethod
     def _prompt_craft_skill(cls, character):
@@ -333,12 +340,25 @@ class ItemsScenarios(BaseGameClient):
         return items[choice - 1]
 
     @classmethod
-    def _execute_craft(cls, character, item, quantity, sell):
+    def _execute_craft(cls, character, item, quantity, post_craft):
         for iteration in range(quantity):
             cls._craft_recursive(character, item, 1, depth=0)
 
-        if sell:
-            cls._sell_crafted(character, item, quantity)
+        if post_craft != 'n':
+            cls._handle_post_craft(character, item['code'], quantity, post_craft)
+
+    @classmethod
+    def _handle_post_craft(cls, character, item_code, quantity, action):
+        if action == 's':
+            cls._sell_crafted(character, item_code, quantity)
+        elif action == 'r':
+            ws = _fetch_location_for_content(character, content_code='weaponcrafting') \
+                or _fetch_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+            if ws:
+                character.move(*ws[:2])
+                character.recycling(item_code, quantity)
+            else:
+                print('No workshop found for recycling.')
 
     @classmethod
     def _craft_recursive(cls, character, item, quantity, depth):
@@ -389,10 +409,10 @@ class ItemsScenarios(BaseGameClient):
         _craft_at_workshop(character, item['code'], craft['skill'], executions)
 
     @classmethod
-    def _sell_crafted(cls, character, item, quantity):
+    def _sell_crafted(cls, character, item_code, quantity):
         ge = _fetch_location_for_content(character, content_type=MapTypesEnum.GRAND_EXCHANGE)
 
         if ge:
             character.move(*ge[:2])
 
-        character.ge_create_sell_order(item['code'], quantity, price=0)
+        character.ge_create_sell_order(item_code, quantity, price=0)

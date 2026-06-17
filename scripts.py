@@ -72,6 +72,24 @@ class _ScenarioHelpers(BaseClient):
 
         character.ge_create_sell_order(item_name, quantity, price=0)
 
+    @classmethod
+    def _handle_post_craft(cls, character, item_code='', quantity=1):
+        choice = input(
+            f'Crafted {item_code} x{quantity}. What to do?\n'
+            '[s]ell, [r]ecycle, [n]othing: '
+        ).strip().lower()
+
+        if choice == 's':
+            cls._sell_item(character, item_code, quantity)
+        elif choice == 'r':
+            ws = cls._get_location_for_content(character, content_code='weaponcrafting') \
+                or cls._get_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+            if ws:
+                character.move(*ws[:2])
+                character.recycling(item_code, quantity)
+            else:
+                print('No workshop found for recycling.')
+
 
 class GatherScenarios(_ScenarioHelpers):
     """Collection of gather-resource scenarios.
@@ -252,49 +270,49 @@ class CraftResourcesScenarios(_ScenarioHelpers):
         return scenarios_list
 
     @classmethod
-    def craft_copper(cls, character, quantity=1):
+    def craft_copper(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_copper_ore(character, 8 * quantity)
-        cls._craft_metal(character, 'copper', quantity)
+        cls._craft_metal(character, 'copper', quantity, post_craft)
 
     @classmethod
-    def craft_iron(cls, character, quantity=1):
+    def craft_iron(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_iron_ore(character, 8 * quantity)
-        cls._craft_metal(character, 'iron', quantity)
+        cls._craft_metal(character, 'iron', quantity, post_craft)
 
     @classmethod
-    def craft_steel(cls, character, quantity=1):
+    def craft_steel(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_iron_ore(character, 3 * quantity)
         GatherScenarios.gather_coal(character, 5 * quantity)
-        cls._craft_metal(character, 'steel', quantity)
+        cls._craft_metal(character, 'steel', quantity, post_craft)
 
     @classmethod
-    def craft_gold(cls, character, quantity=1):
+    def craft_gold(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_gold_ore(character, 8 * quantity)
-        cls._craft_metal(character, 'gold', quantity)
+        cls._craft_metal(character, 'gold', quantity, post_craft)
 
     @classmethod
-    def craft_ash_planks(cls, character, quantity=1):
+    def craft_ash_planks(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_ash_wood(character, 8 * quantity)
-        cls._craft_planks(character, 'ash_plank', quantity)
+        cls._craft_planks(character, 'ash_plank', quantity, post_craft)
 
     @classmethod
-    def craft_spruce_planks(cls, character, quantity=1):
+    def craft_spruce_planks(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_spruce_wood(character, 8 * quantity)
-        cls._craft_planks(character, 'spruce_plank', quantity)
+        cls._craft_planks(character, 'spruce_plank', quantity, post_craft)
 
     @classmethod
-    def craft_hardwood_planks(cls, character, quantity=1):
+    def craft_hardwood_planks(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_ash_wood(character, 3 * quantity)
         GatherScenarios.gather_birch_wood(character, 5 * quantity)
-        cls._craft_planks(character, 'hardwood_plank', quantity)
+        cls._craft_planks(character, 'hardwood_plank', quantity, post_craft)
 
     @classmethod
-    def craft_dead_wood_planks(cls, character, quantity=1):
+    def craft_dead_wood_planks(cls, character, quantity=1, post_craft='n'):
         GatherScenarios.gather_dead_wood(character, 8 * quantity)
-        cls._craft_planks(character, 'dead_wood_plank', quantity)
+        cls._craft_planks(character, 'dead_wood_plank', quantity, post_craft)
 
     @classmethod
-    def _craft_metal(cls, character, item_code='', quantity=1):
+    def _craft_metal(cls, character, item_code='', quantity=1, post_craft='n'):
         ws = cls._get_location_for_content(character, content_code='mining')
 
         if ws:
@@ -302,14 +320,20 @@ class CraftResourcesScenarios(_ScenarioHelpers):
 
         character.crafting(item_code, quantity)
 
+        if post_craft != 'n':
+            cls._handle_post_craft(character, item_code, quantity)
+
     @classmethod
-    def _craft_planks(cls, character, item_code='', quantity=1):
+    def _craft_planks(cls, character, item_code='', quantity=1, post_craft='n'):
         ws = cls._get_location_for_content(character, content_code='woodcutting')
 
         if ws:
             character.move(*ws[:2])
 
         character.crafting(item_code, quantity)
+
+        if post_craft != 'n':
+            cls._handle_post_craft(character, item_code, quantity)
 
 
 class CraftEquipmentScenarios(_ScenarioHelpers):
@@ -394,184 +418,184 @@ class CraftEquipmentScenarios(_ScenarioHelpers):
         return scenarios_list
 
     @classmethod
-    def craft_wooden_staff(cls, character, quantity=1, sell=False):
+    def craft_wooden_staff(cls, character, quantity=1, post_craft='n'):
         CraftResourcesScenarios.craft_ash_planks(character, 3 * quantity)
         GatherScenarios.gather_ash_wood(character, 4 * quantity)
         cls._craft_weapon(character, 'wooden_stick', quantity)
         cls._craft_weapon(character, 'wooden_staff', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'wooden_staff', quantity)
+        if post_craft != 'n':
+            cls._handle_post_craft(character, 'wooden_staff', quantity)
 
     @classmethod
-    def craft_wooden_shield(cls, character, quantity=1, sell=False):
+    def craft_wooden_shield(cls, character, quantity=1, post_craft='n'):
         CraftResourcesScenarios.craft_ash_planks(character, 6 * quantity)
         cls._craft_gear(character, 'wooden_shield', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'wooden_shield', quantity)
+        if post_craft != 'n':
+            cls._handle_post_craft(character, 'wooden_shield', quantity)
 
     @classmethod
-    def craft_copper_dagger(cls, character, quantity=1, sell=False):
+    def craft_copper_dagger(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 6 * quantity)
         cls._craft_weapon(character, 'copper_dagger', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_dagger', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_dagger', quantity)
 
     @classmethod
-    def craft_copper_helmet(cls, character, quantity=1, sell=False):
+    def craft_copper_helmet(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 6 * quantity)
         cls._craft_gear(character, 'copper_helmet', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_helmet', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_helmet', quantity)
 
     @classmethod
-    def craft_copper_boots(cls, character, quantity=1, sell=False):
+    def craft_copper_boots(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 8 * quantity)
         cls._craft_gear(character, 'copper_boots', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_boots', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_boots', quantity)
 
     @classmethod
-    def craft_copper_ring(cls, character, quantity=1, sell=False):
+    def craft_copper_ring(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 6 * quantity)
         cls._craft_jewelry(character, 'copper_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_ring', quantity)
 
     @classmethod
-    def craft_copper_armor(cls, character, quantity=1, sell=False):
+    def craft_copper_armor(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 5 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 2 * quantity)
         cls._craft_gear(character, 'copper_armor', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_armor', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_armor', quantity)
 
     @classmethod
-    def craft_copper_legs_armor(cls, character, quantity=1, sell=False):
+    def craft_copper_legs_armor(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 6 * quantity)
         cls._craft_gear(character, 'copper_legs_armor', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'copper_legs_armor', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'copper_legs_armor', quantity)
 
     @classmethod
-    def craft_feather_coat(cls, character, quantity=1, sell=False):
+    def craft_feather_coat(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 6 * quantity)
         cls._craft_gear(character, 'feather_coat', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'feather_coat', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'feather_coat', quantity)
 
     @classmethod
-    def craft_life_amulet(cls, character, quantity=1, sell=False):
+    def craft_life_amulet(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'blue_slimeball', 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'red_slimeball', 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 4 * quantity)
         cls._craft_jewelry(character, 'life_amulet', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'life_amulet', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'life_amulet', quantity)
 
     @classmethod
-    def craft_sticky_dagger(cls, character, quantity=1, sell=False):
+    def craft_sticky_dagger(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 5 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'green_slimeball', 2 * quantity)
         cls._craft_weapon(character, 'sticky_dagger', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'sticky_dagger', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'sticky_dagger', quantity)
 
     @classmethod
-    def craft_sticky_sword(cls, character, quantity=1, sell=False):
+    def craft_sticky_sword(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 5 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 2 * quantity)
         cls._craft_weapon(character, 'sticky_sword', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'sticky_sword', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'sticky_sword', quantity)
 
     @classmethod
-    def craft_iron_dagger(cls, character, quantity=1, sell=False):
+    def craft_iron_dagger(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 2 * quantity)
         CraftResourcesScenarios.craft_iron(character, 6 * quantity)
         cls._craft_weapon(character, 'iron_dagger', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'iron_dagger', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'iron_dagger', quantity)
 
     @classmethod
-    def craft_iron_sword(cls, character, quantity=1, sell=False):
+    def craft_iron_sword(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_iron(character, 8 * quantity)
         cls._craft_weapon(character, 'iron_sword', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'iron_sword', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'iron_sword', quantity)
 
     @classmethod
-    def craft_greater_wooden_staff(cls, character, quantity=1, sell=False):
+    def craft_greater_wooden_staff(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_ash_planks(character, 3 * quantity)
         CraftResourcesScenarios.craft_spruce_planks(character, 4 * quantity)
         cls._craft_weapon(character, 'greater_wooden_staff', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'greater_wooden_staff', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'greater_wooden_staff', quantity)
 
     @classmethod
-    def craft_fire_bow(cls, character, quantity=1, sell=False):
+    def craft_fire_bow(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'red_slimeball', 2 * quantity)
         cls._craft_weapon(character, 'fire_bow', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'fire_bow', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'fire_bow', quantity)
 
     @classmethod
-    def craft_iron_boots(cls, character, quantity=1, sell=False):
+    def craft_iron_boots(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_iron(character, 5 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 3 * quantity)
         cls._craft_gear(character, 'iron_boots', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'iron_boots', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'iron_boots', quantity)
 
     @classmethod
-    def craft_iron_ring(cls, character, quantity=1, sell=False):
+    def craft_iron_ring(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_iron(character, 6 * quantity)
         cls._craft_jewelry(character, 'iron_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'iron_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'iron_ring', quantity)
 
     @classmethod
-    def craft_fire_and_earth_amulet(cls, character, quantity=1, sell=False):
+    def craft_fire_and_earth_amulet(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 3 * quantity)
         CraftResourcesScenarios.craft_iron(character, 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'red_slimeball', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 3 * quantity)
         cls._craft_jewelry(character, 'fire_and_earth_amulet', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'fire_and_earth_amulet', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'fire_and_earth_amulet', quantity)
 
     @classmethod
-    def craft_air_and_water_amulet(cls, character, quantity=1, sell=False):
+    def craft_air_and_water_amulet(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_copper(character, 2 * quantity)
         CraftResourcesScenarios.craft_iron(character, 6 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'green_slimeball', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'blue_slimeball', 3 * quantity)
         cls._craft_jewelry(character, 'air_and_water_amulet', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'air_and_water_amulet', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'air_and_water_amulet', quantity)
 
     @classmethod
-    def craft_slime_shield(cls, character, quantity=1, sell=False):
+    def craft_slime_shield(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 6 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'green_slimeball', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'blue_slimeball', 3 * quantity)
@@ -579,43 +603,43 @@ class CraftEquipmentScenarios(_ScenarioHelpers):
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 3 * quantity)
         cls._craft_gear(character, 'slime_shield', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'slime_shield', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'slime_shield', quantity)
 
     @classmethod
-    def craft_adventurer_helmet(cls, character, quantity=1, sell=False):
+    def craft_adventurer_helmet(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'cowhide', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 4 * quantity)
         cls._craft_gear(character, 'adventurer_helmet', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'adventurer_helmet', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'adventurer_helmet', quantity)
 
     @classmethod
-    def craft_adventurer_pants(cls, character, quantity=1, sell=False):
+    def craft_adventurer_pants(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_iron(character, 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'cowhide', 8 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 2 * quantity)
         cls._craft_gear(character, 'adventurer_pants', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'adventurer_pants', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'adventurer_pants', quantity)
 
     @classmethod
-    def craft_adventurer_vest(cls, character, quantity=1, sell=False):
+    def craft_adventurer_vest(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'cowhide', 6 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 4 * quantity)
         cls._craft_gear(character, 'adventurer_vest', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'adventurer_vest', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'adventurer_vest', quantity)
 
     @classmethod
-    def craft_adventurer_boots(cls, character, quantity=1, sell=False):
+    def craft_adventurer_boots(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'cowhide', 6 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'wolf_hair', 4 * quantity)
@@ -623,11 +647,11 @@ class CraftEquipmentScenarios(_ScenarioHelpers):
         CraftResourcesScenarios.craft_spruce_planks(character, 2 * quantity)
         cls._craft_gear(character, 'adventurer_boots', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'adventurer_boots', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'adventurer_boots', quantity)
 
     @classmethod
-    def craft_multislimes_sword(cls, character, quantity=1, sell=False):
+    def craft_multislimes_sword(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_sword(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'red_slimeball', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'green_slimeball', 3 * quantity)
@@ -635,79 +659,79 @@ class CraftEquipmentScenarios(_ScenarioHelpers):
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 3 * quantity)
         cls._craft_weapon(character, 'multislimes_sword', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'multislimes_sword', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'multislimes_sword', quantity)
 
     @classmethod
-    def craft_mushstaff(cls, character, quantity=1, sell=False):
+    def craft_mushstaff(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 5 * quantity)
         CraftResourcesScenarios.craft_iron(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 5 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'flying_wing', 2 * quantity)
         cls._craft_weapon(character, 'mushstaff', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'mushstaff', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'mushstaff', quantity)
 
     @classmethod
-    def craft_mushmush_bow(cls, character, quantity=1, sell=False):
+    def craft_mushmush_bow(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_spruce_planks(character, 6 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'wolf_hair', 3 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 4 * quantity)
         cls._craft_weapon(character, 'mushmush_bow', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'mushmush_bow', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'mushmush_bow', quantity)
 
     @classmethod
-    def craft_air_ring(cls, character, quantity=1, sell=False):
+    def craft_air_ring(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_ring(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'green_slimeball', 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'flying_wing', 2 * quantity)
         cls._craft_jewelry(character, 'air_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'air_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'air_ring', quantity)
 
     @classmethod
-    def craft_earth_ring(cls, character, quantity=1, sell=False):
+    def craft_earth_ring(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_ring(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'yellow_slimeball', 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 2 * quantity)
         cls._craft_jewelry(character, 'earth_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'earth_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'earth_ring', quantity)
 
     @classmethod
-    def craft_fire_ring(cls, character, quantity=1, sell=False):
+    def craft_fire_ring(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_ring(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'red_slimeball', 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 2 * quantity)
         cls._craft_jewelry(character, 'fire_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'fire_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'fire_ring', quantity)
 
     @classmethod
-    def craft_water_ring(cls, character, quantity=1, sell=False):
+    def craft_water_ring(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_ring(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'blue_slimeball', 4 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'flying_wing', 2 * quantity)
         cls._craft_jewelry(character, 'water_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'water_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'water_ring', quantity)
 
     @classmethod
-    def craft_life_ring(cls, character, quantity=1, sell=False):
+    def craft_life_ring(cls, character, quantity=1, post_craft="n"):
         cls.craft_iron_ring(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'feather', 2 * quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', 2 * quantity)
         cls._craft_jewelry(character, 'life_ring', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'life_ring', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'life_ring', quantity)
 
     @classmethod
     def _craft_weapon(cls, character, item_code='', quantity=1):
@@ -785,95 +809,95 @@ class CraftConsumablesScenarios(_ScenarioHelpers):
         return scenarios_list
 
     @classmethod
-    def craft_cooked_gudgeon(cls, character, quantity=1, sell=False):
+    def craft_cooked_gudgeon(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_location(character, 'gudgeon', quantity)
         cls._craft_food(character, 'cooked_gudgeon', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_gudgeon', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_gudgeon', quantity)
 
     @classmethod
-    def craft_cooked_chicken(cls, character, quantity=1, sell=False):
+    def craft_cooked_chicken(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'raw_chicken', quantity)
         cls._craft_food(character, 'cooked_chicken', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_chicken', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_chicken', quantity)
 
     @classmethod
-    def craft_cooked_beef(cls, character, quantity=1, sell=False):
+    def craft_cooked_beef(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'raw_beef', quantity)
         cls._craft_food(character, 'cooked_beef', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_beef', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_beef', quantity)
 
     @classmethod
-    def craft_cooked_shrimp(cls, character, quantity=1, sell=False):
+    def craft_cooked_shrimp(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_location(character, 'shrimp', quantity)
         cls._craft_food(character, 'cooked_shrimp', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_shrimp', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_shrimp', quantity)
 
     @classmethod
-    def craft_cheese(cls, character, quantity=1, sell=False):
+    def craft_cheese(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'milk_bucket', 3 * quantity)
         cls._craft_food(character, 'cheese', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cheese', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cheese', quantity)
 
     @classmethod
-    def craft_fried_eggs(cls, character, quantity=1, sell=False):
+    def craft_fried_eggs(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'egg', 5 * quantity)
         cls._craft_food(character, 'fried_eggs', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'fried_eggs', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'fried_eggs', quantity)
 
     @classmethod
-    def craft_mushroom_soup(cls, character, quantity=1, sell=False):
+    def craft_mushroom_soup(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_ash_planks(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'milk_bucket', quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'mushroom', quantity)
         cls._craft_food(character, 'mushroom_soup', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'mushroom_soup', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'mushroom_soup', quantity)
 
     @classmethod
-    def craft_beef_stew(cls, character, quantity=1, sell=False):
+    def craft_beef_stew(cls, character, quantity=1, post_craft="n"):
         CraftResourcesScenarios.craft_ash_planks(character, quantity)
         GatherScenarios.gather_resource_from_monsters(character, 'raw_beef', 3 * quantity)
         cls._craft_food(character, 'beef_stew', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'beef_stew', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'beef_stew', quantity)
 
     @classmethod
-    def craft_cooked_wolf_meat(cls, character, quantity=1, sell=False):
+    def craft_cooked_wolf_meat(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_monsters(character, 'raw_wolf_meat', quantity)
         cls._craft_food(character, 'cooked_wolf_meat', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_wolf_meat', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_wolf_meat', quantity)
 
     @classmethod
-    def craft_cooked_trout(cls, character, quantity=1, sell=False):
+    def craft_cooked_trout(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_location(character, 'trout', quantity)
         cls._craft_food(character, 'cooked_trout', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_trout', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_trout', quantity)
 
     @classmethod
-    def craft_cooked_bass(cls, character, quantity=1, sell=False):
+    def craft_cooked_bass(cls, character, quantity=1, post_craft="n"):
         GatherScenarios.gather_resource_from_location(character, 'bass', quantity)
         cls._craft_food(character, 'cooked_bass', quantity)
 
-        if sell:
-            _ScenarioHelpers._sell_item(character, 'cooked_bass', quantity)
+        if post_craft != "n":
+            cls._handle_post_craft(character, 'cooked_bass', quantity)
 
     @classmethod
     def _craft_food(cls, character, item_code='', quantity=1):
@@ -1024,7 +1048,7 @@ class ScenariosStorage(BaseClient):
 
     SCENARIO_COLLECTIONS = (
         ItemsScenarios,
-        RecyclingScenarios,
+        OtherScenarios,
     )
 
     def __init__(self, character):
