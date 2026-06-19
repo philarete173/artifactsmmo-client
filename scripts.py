@@ -97,8 +97,7 @@ class _ScenarioHelpers(BaseClient):
         elif choice == 'r':
             ws = cls._get_workshop_for_item_code(character, item_code)
             if ws:
-                if character.x != ws[0] or character.y != ws[1]:
-                    character.move(*ws[:2])
+                character.move(*ws[:2])
                 character.recycling(item_code, quantity)
             else:
                 print('No workshop found for recycling.')
