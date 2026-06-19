@@ -2131,6 +2131,8 @@ class Character(BaseGameClient):
         return result
 
     def move(self, x=0, y=0, map_id=None):
+        if map_id is None and self.x == x and self.y == y:
+            return True
         data = {}
         if map_id is not None:
             data['map_id'] = map_id
