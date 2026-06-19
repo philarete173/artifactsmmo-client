@@ -132,6 +132,17 @@ def _fetch_location_for_content(character, content_code='', content_type=''):
     return None
 
 
+def _get_workshop_for_item_code(character, item_code):
+    item = _fetch_item_details(character, item_code) or {}
+    craft = item.get('craft') or {}
+    skill = craft.get('skill', '')
+    if skill:
+        workshop = _fetch_location_for_content(character, content_code=skill)
+        if workshop:
+            return workshop
+    return _fetch_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+
+
 def _gather_loop(character, item_code, quantity):
     """Gather at current location until we have at least `quantity` more of `item_code`."""
     target = _inventory_quantity(character, item_code) + quantity
@@ -228,9 +239,8 @@ def _craft_at_workshop(character, item_code, craft_skill, executions):
 class ItemsScenarios(BaseGameClient):
     """Generic crafting scenarios driven by the /items API.
 
-    A single ``craft_any_item`` scenario replaces the per-item ``craft_X``
-    methods that used to live in ``CraftResourcesScenarios``,
-    ``CraftEquipmentScenarios`` and ``CraftConsumablesScenarios``.
+    A single ``craft_any_item`` scenario replaces all per-item ``craft_X``
+    methods from the old scenario collections.
     """
 
     CATEGORY = 'Craft item'
@@ -341,19 +351,61 @@ class ItemsScenarios(BaseGameClient):
 
     @classmethod
     def _execute_craft(cls, character, item, quantity, post_craft):
-        for iteration in range(quantity):
-            cls._craft_recursive(character, item, 1, depth=0)
+        requested = quantity
+        quantity = cls._limit_by_inventory(character, item, quantity)
+        if quantity != requested and quantity > 0:
+            print(f'Inventory space limited: crafting {quantity} instead of {requested}.')
 
-        if post_craft != 'n':
+        if quantity > 0:
+            craft_per_exec = (item.get('craft') or {}).get('quantity', 1)
+            actual = ((quantity + craft_per_exec - 1) // craft_per_exec) * craft_per_exec
+            if actual != quantity:
+                print(f'Recipe produces {craft_per_exec} per batch: crafting {actual} instead of {quantity}.')
+            cls._craft_recursive(character, item, actual, depth=0)
+            quantity = actual
+
+        if post_craft != 'n' and quantity > 0:
             cls._handle_post_craft(character, item['code'], quantity, post_craft)
+
+    @classmethod
+    def _count_unique_recipe_codes(cls, character, item_code, seen=None, depth=0):
+        if seen is None:
+            seen = set()
+        if depth > 5 or item_code in seen:
+            return seen
+        seen.add(item_code)
+        item = _fetch_item_details(character, item_code)
+        if not item:
+            return seen
+        craft = item.get('craft') or {}
+        for req in craft.get('items', []):
+            cls._count_unique_recipe_codes(character, req['code'], seen, depth + 1)
+        return seen
+
+    @classmethod
+    def _limit_by_inventory(cls, character, item, quantity):
+        max_slots = getattr(character, 'inventory_max_items', 100)
+        used = sum(1 for slot in (character.inventory or []) if slot.get('code'))
+        recipe_codes = cls._count_unique_recipe_codes(character, item['code'])
+        extra_slots_needed = len(recipe_codes)
+        if extra_slots_needed <= 0:
+            return quantity
+
+        if used + extra_slots_needed > max_slots * 0.9:
+            max_batch = int((max_slots * 0.9 - used) / extra_slots_needed)
+            if max_batch < 1:
+                print(f'Inventory full. Cannot craft {item["code"]}.')
+                return 0
+            if max_batch < quantity:
+                return max_batch
+        return quantity
 
     @classmethod
     def _handle_post_craft(cls, character, item_code, quantity, action):
         if action == 's':
             cls._sell_crafted(character, item_code, quantity)
         elif action == 'r':
-            ws = _fetch_location_for_content(character, content_code='weaponcrafting') \
-                or _fetch_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+            ws = _get_workshop_for_item_code(character, item_code)
             if ws:
                 character.move(*ws[:2])
                 character.recycling(item_code, quantity)
