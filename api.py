@@ -840,7 +840,20 @@ class GameClient(BaseGameClient):
         if quantity is None:
             return
 
+        self._ensure_at_correct_workshop(item_code)
         self.character.recycling(item_code, quantity)
+
+    def _ensure_at_correct_workshop(self, item_code):
+        item = self.get_item(code=item_code)
+        craft = item.get('craft') or {}
+        skill = craft.get('skill', '')
+        if skill:
+            response = self._get_with_reauth(url='/maps', data={'content_code': skill, 'size': 1})
+            if response.status_code == 200:
+                data = response.json().get('data', [])
+                if data:
+                    loc = data[0]
+                    self.character.move(loc['x'], loc['y'])
 
     def _at_workshop(self):
         location_data = self.get_location_data(self.character.layer, self.character.x, self.character.y)
