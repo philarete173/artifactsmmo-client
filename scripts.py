@@ -73,6 +73,19 @@ class _ScenarioHelpers(BaseClient):
         character.ge_create_sell_order(item_name, quantity, price=0)
 
     @classmethod
+    def _get_workshop_for_item_code(cls, character, item_code):
+        response = character._get(url=f'/items/{item_code}')
+        item = response.json().get('data', {}) if response.status_code == 200 else {}
+        craft = item.get('craft') or {}
+        skill = craft.get('skill', '')
+        if skill:
+            workshop = cls._get_location_for_content(character, content_code=skill)
+            if workshop:
+                return workshop
+        fallback = cls._get_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+        return fallback
+
+    @classmethod
     def _handle_post_craft(cls, character, item_code='', quantity=1):
         choice = input(
             f'Crafted {item_code} x{quantity}. What to do?\n'
@@ -82,10 +95,10 @@ class _ScenarioHelpers(BaseClient):
         if choice == 's':
             cls._sell_item(character, item_code, quantity)
         elif choice == 'r':
-            ws = cls._get_location_for_content(character, content_code='weaponcrafting') \
-                or cls._get_location_for_content(character, content_type=MapTypesEnum.WORKSHOP)
+            ws = cls._get_workshop_for_item_code(character, item_code)
             if ws:
-                character.move(*ws[:2])
+                if character.x != ws[0] or character.y != ws[1]:
+                    character.move(*ws[:2])
                 character.recycling(item_code, quantity)
             else:
                 print('No workshop found for recycling.')
