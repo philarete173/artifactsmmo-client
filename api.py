@@ -2277,8 +2277,6 @@ class Character(BaseGameClient):
             self.equip(best_code, 'weapon')
 
     def gathering(self):
-        self._deposit_non_equip_if_full()
-
         skill_code = self._get_gathering_skill_at_location()
         if skill_code:
             self._equip_best_gathering_weapon(skill_code)

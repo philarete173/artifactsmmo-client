@@ -351,54 +351,61 @@ class ItemsScenarios(BaseGameClient):
 
     @classmethod
     def _execute_craft(cls, character, item, quantity, post_craft):
-        requested = quantity
-        quantity = cls._limit_by_inventory(character, item, quantity)
-        if quantity != requested and quantity > 0:
-            print(f'Inventory space limited: crafting {quantity} instead of {requested}.')
-
-        if quantity > 0:
+        remaining = quantity
+        while remaining > 0:
+            batch = cls._calc_batch_size(character, item, remaining)
+            if batch == 0:
+                print(f'Inventory full. Cannot craft {item["code"]}.')
+                break
+            if batch < remaining:
+                print(f'Inventory space limited: crafting {batch} instead of {remaining} (batch).')
             craft_per_exec = (item.get('craft') or {}).get('quantity', 1)
-            actual = ((quantity + craft_per_exec - 1) // craft_per_exec) * craft_per_exec
-            if actual != quantity:
-                print(f'Recipe produces {craft_per_exec} per batch: crafting {actual} instead of {quantity}.')
+            actual = ((batch + craft_per_exec - 1) // craft_per_exec) * craft_per_exec
+            if actual != batch:
+                print(f'Recipe produces {craft_per_exec} per batch: crafting {actual} instead of {batch}.')
             cls._craft_recursive(character, item, actual, depth=0)
-            quantity = actual
+            remaining -= actual
 
-        if post_craft != 'n' and quantity > 0:
-            cls._handle_post_craft(character, item['code'], quantity, post_craft)
+        crafted = quantity - remaining
+        if post_craft != 'n' and crafted > 0:
+            cls._handle_post_craft(character, item['code'], crafted, post_craft)
+
+    _peak_cache = {}
 
     @classmethod
-    def _count_unique_recipe_codes(cls, character, item_code, seen=None, depth=0):
-        if seen is None:
-            seen = set()
-        if depth > 5 or item_code in seen:
-            return seen
-        seen.add(item_code)
+    def _peak_items_per_craft(cls, character, item_code, depth=0):
+        if depth > 5:
+            return 1
+        if item_code in cls._peak_cache:
+            return cls._peak_cache[item_code]
         item = _fetch_item_details(character, item_code)
         if not item:
-            return seen
+            return 1
         craft = item.get('craft') or {}
+        if not craft.get('items'):
+            cls._peak_cache[item_code] = 1
+            return 1
+        peak = 1
         for req in craft.get('items', []):
-            cls._count_unique_recipe_codes(character, req['code'], seen, depth + 1)
-        return seen
+            sub_peak = cls._peak_items_per_craft(character, req['code'], depth + 1)
+            total = req['quantity'] * sub_peak
+            if total > peak:
+                peak = total
+        cls._peak_cache[item_code] = peak
+        return peak
 
     @classmethod
-    def _limit_by_inventory(cls, character, item, quantity):
-        max_slots = getattr(character, 'inventory_max_items', 100)
-        used = sum(1 for slot in (character.inventory or []) if slot.get('code'))
-        recipe_codes = cls._count_unique_recipe_codes(character, item['code'])
-        extra_slots_needed = len(recipe_codes)
-        if extra_slots_needed <= 0:
+    def _calc_batch_size(cls, character, item, quantity):
+        max_total = getattr(character, 'inventory_max_items', 100)
+        current = sum(s.get('quantity', 0) for s in (character.inventory or []) if s.get('code'))
+        available = int(max_total * 0.9) - current
+        if available <= 0:
+            return 0
+        per_item = cls._peak_items_per_craft(character, item['code'])
+        if per_item <= 0:
             return quantity
-
-        if used + extra_slots_needed > max_slots * 0.9:
-            max_batch = int((max_slots * 0.9 - used) / extra_slots_needed)
-            if max_batch < 1:
-                print(f'Inventory full. Cannot craft {item["code"]}.')
-                return 0
-            if max_batch < quantity:
-                return max_batch
-        return quantity
+        limit = max(1, available // per_item)
+        return min(quantity, limit)
 
     @classmethod
     def _handle_post_craft(cls, character, item_code, quantity, action):
