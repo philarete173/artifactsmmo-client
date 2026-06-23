@@ -2081,19 +2081,19 @@ class Character(BaseGameClient):
                 items = main.get('drops')
 
         if xp is not None:
-            details.append(f'Earned XP: +{xp}')
+            details.append(f'XP: {xp}')
 
         if gold is not None:
-            details.append(f'Recieved Gold: {gold:+d}')
+            details.append(f'Gold: {gold:d}')
 
         if items:
             items_data = []
             for item in items:
                 code = item.get('code', '?')
                 qty = item.get('quantity', 1)
-                items_data.append(f'{code} {qty:+d}')
+                items_data.append(f'{code} {qty:d}')
 
-            details.append(f"Obtained Items: {', '.join(items_data)}" )
+            details.append(f"Items: {', '.join(items_data)}" )
         if details:
             print('  ' + '\n  '.join(details))
 
