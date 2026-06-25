@@ -1,12 +1,11 @@
-import inspect
 import random
 import re
 import sys
 from time import sleep
 
 from base import BaseGameClient
-from images import display_image
-from enums import (
+from base.display import Display
+from base.enums import (
     CharacterSexEnum,
     CharacterSkinsEnum,
     ActionTypeEnum,
@@ -18,13 +17,16 @@ from enums import (
     MapLayerEnum,
 )
 from scripts import ScenariosStorage
+from base.images import display_image
 
 
 class GameClient(BaseGameClient):
     """Client for interacting with the game world (account-level operations)."""
 
-    def __init__(self):
+    def __init__(self, display=None):
         super().__init__()
+
+        self.display = display or ConsoleDisplay()
 
         self.main_menu_map = {
             ActionTypeEnum.MOVE: self.character_movement,
@@ -66,12 +68,11 @@ class GameClient(BaseGameClient):
         }
 
         self.account_menu_map = {
-            ActionTypeEnum.SHOW_ACCOUNT_DETAILS: self.get_account_details,
+            ActionTypeEnum.SHOW_ACCOUNT_DETAILS: self._show_account_details,
             ActionTypeEnum.CHANGE_PASSWORD: self.change_password,
             ActionTypeEnum.LOGIN_WITH_PASSWORD: self.login_with_password,
+            ActionTypeEnum.CREATE_CHARACTER: self._prompt_and_create_character,
         }
-
-        self.show_current_season()
 
     def main_loop(self):
         """Top-level menu: account-level actions plus character selection.
@@ -79,9 +80,11 @@ class GameClient(BaseGameClient):
         that loop returns, control comes back here so the user can pick
         a different character or perform account-level actions."""
 
+        self.show_current_season()
+
         while True:
-            actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ACCOUNT_ACTIONS)
-            idx = self._prompt_int(
+            actions_map, actions_str = self.display.prepare_menu(ActionTypeEnum.ACCOUNT_ACTIONS)
+            idx = self.display.prompt_int(
                 'What do you want to do at the account level?\n'
                 f'{actions_str}\n'
                 'Please type a number: '
@@ -99,19 +102,19 @@ class GameClient(BaseGameClient):
 
             self._dispatch_account_action(current_action)
 
-            print('')
+            self.display.print('')
 
     def _dispatch_account_action(self, current_action):
         method = self.account_menu_map.get(current_action)
 
         if method is None:
-            print('This is not a valid action!')
+            self.display.print('This is not a valid action!')
             return
 
         try:
             method()
         except Exception as error:
-            print(f'Something went wrong. Error: {error}. Please try again.')
+            self.display.print(f'Something went wrong. Error: {error}. Please try again.')
 
     def character_action_loop(self):
         """Per-character action menu with 3 top-level categories."""
@@ -120,9 +123,9 @@ class GameClient(BaseGameClient):
             current_location_data = self.get_location_data(
                 self.character.layer, self.character.x, self.character.y,
             )
-            self._print_location_info(current_location_data)
+            self.display.show_location(current_location_data)
 
-            choice = self._prompt_int(
+            choice = self.display.prompt_int(
                 'What do you want to do?\n'
                 '1 - Basic actions\n'
                 '2 - Advanced actions\n'
@@ -139,7 +142,7 @@ class GameClient(BaseGameClient):
             elif choice == 3:
                 self._handle_character_actions()
 
-            print('')
+            self.display.print('')
 
     def _handle_basic_actions(self, location_data):
         location_type = ((location_data.get('interactions') or {}).get('content') or {}).get('type', None)
@@ -148,8 +151,8 @@ class GameClient(BaseGameClient):
         if (location_data.get('interactions') or {}).get('transition'):
             actions.append(ActionTypeEnum.TRANSITION)
 
-        actions_map, actions_str = self._prepare_actions_menu_data(actions)
-        idx = self._prompt_int(
+        actions_map, actions_str = self.display.prepare_menu(actions)
+        idx = self.display.prompt_int(
             'Basic actions:\n'
             f'{actions_str}\n'
             'Please type a number: '
@@ -160,16 +163,16 @@ class GameClient(BaseGameClient):
         current_action = actions_map[idx]
         method = self.main_menu_map.get(current_action)
         if method is None:
-            print('This is not a valid action!')
+            self.display.print('This is not a valid action!')
         else:
             try:
                 method()
             except Exception as error:
-                print(f'Something went wrong. Error: {error}. Please try again.')
+                self.display.print(f'Something went wrong. Error: {error}. Please try again.')
 
     def _handle_advanced_actions(self):
-        actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.ADVANCED_ACTIONS)
-        idx = self._prompt_int(
+        actions_map, actions_str = self.display.prepare_menu(ActionTypeEnum.ADVANCED_ACTIONS)
+        idx = self.display.prompt_int(
             'Advanced actions:\n'
             f'{actions_str}\n'
             'Please type a number: '
@@ -180,16 +183,16 @@ class GameClient(BaseGameClient):
         current_action = actions_map[idx]
         method = self.main_menu_map.get(current_action)
         if method is None:
-            print('This is not a valid action!')
+            self.display.print('This is not a valid action!')
         else:
             try:
                 method()
             except Exception as error:
-                print(f'Something went wrong. Error: {error}. Please try again.')
+                self.display.print(f'Something went wrong. Error: {error}. Please try again.')
 
     def _handle_character_actions(self):
-        actions_map, actions_str = self._prepare_actions_menu_data(ActionTypeEnum.CHARACTER_ACTIONS)
-        idx = self._prompt_int(
+        actions_map, actions_str = self.display.prepare_menu(ActionTypeEnum.CHARACTER_ACTIONS)
+        idx = self.display.prompt_int(
             'Character actions:\n'
             f'{actions_str}\n'
             'Please type a number: '
@@ -210,128 +213,38 @@ class GameClient(BaseGameClient):
             self.character_change_skin()
 
     def _show_character_stats(self):
-        print('=== Character Stats ===')
-        print(f'Level {self.character.level} ({self.character.xp} / {self.character.max_xp})')
-        print('Core Stats:')
-        print(f'  HP: {self.character.hp} / {self.character.max_hp}')
-        print(f'  Haste: {self.character.haste}')
-        print(f'  Critical Strike: {self.character.critical_strike}')
-        print(f'  Initiative: {self.character.initiative}')
-        print(f'  Threat: {self.character.threat}')
-        print(f'  Prospecting: {self.character.prospecting}')
-        print(f'  Wisdom: {self.character.wisdom}')
-        print(f'  Damage: {self.character.dmg}%')
-        print('Attack:')
-        print(f'  Fire: {self.character.attack_fire}')
-        print(f'  Earth: {self.character.attack_earth}')
-        print(f'  Water: {self.character.attack_water}')
-        print(f'  Air: {self.character.attack_air}')
-        print('Elemental Damage:')
-        print(f'  Fire: {self.character.dmg_fire}%')
-        print(f'  Earth: {self.character.dmg_earth}%')
-        print(f'  Water: {self.character.dmg_water}%')
-        print(f'  Air: {self.character.dmg_air}%')
-        print('Resistance:')
-        print(f'  Fire: {self.character.res_fire}%')
-        print(f'  Earth: {self.character.res_earth}%')
-        print(f'  Water: {self.character.res_water}%')
-        print(f'  Air: {self.character.res_air}%')
-        print('Effects:')
-        effects = getattr(self.character, 'effects', None) or []
-        if effects:
-            for effect in effects:
-                print(f'  {effect.get("code", "?")}: {effect.get("value", 0)}')
-        else:
-            print('  (none)')
+        self.display.show_stats(self.character)
 
     def _show_character_skills(self):
-        print('=== Character Skills ===')
-        skills = [
-            ('Mining', 'mining'),
-            ('Woodcutting', 'woodcutting'),
-            ('Fishing', 'fishing'),
-            ('Weaponcrafting', 'weaponcrafting'),
-            ('Gearcrafting', 'gearcrafting'),
-            ('Jewelrycrafting', 'jewelrycrafting'),
-            ('Cooking', 'cooking'),
-            ('Alchemy', 'alchemy'),
-        ]
-        for skill_name, skill_code in skills:
-            skill_level = getattr(self.character, f'{skill_code}_level', 0)
-            current_xp = getattr(self.character, f'{skill_code}_xp', 0)
-            max_skill_xp = getattr(self.character, f'{skill_code}_max_xp', 0)
-            print(f'{skill_name}: Level {skill_level} ({current_xp} / {max_skill_xp})')
+        self.display.show_skills(self.character)
 
     def _show_character_inventory(self):
         inventory = getattr(self.character, 'inventory', None) or []
-        max_items = getattr(self.character, 'inventory_max_items', 0)
-        total_quantity = sum(slot.get('quantity', 0) for slot in inventory if slot.get('code'))
-        filled_slots = sum(1 for slot in inventory if slot.get('code'))
-
         unique_codes = set(slot.get('code') for slot in inventory if slot.get('code'))
-        print('Loading items data...', end='\r')
+        self.display.print('Loading items data...', end='\r')
         item_names = {}
         for item_code in unique_codes:
             item = self.get_item(item_code)
             item_names[item_code] = (item or {}).get('name', item_code)
-
-        print('=== Character Inventory ===')
-        print(f'Fill: {total_quantity} / {max_items} (slots: {filled_slots})')
-        for slot in inventory:
-            item_code = slot.get('code')
-            if not item_code:
-                continue
-            quantity = slot.get('quantity', 1)
-            item_name = item_names.get(item_code, item_code)
-            print(f'  {item_name} x{quantity}')
+        self.display.show_inventory(self.character, item_names)
 
     def _show_character_equipment(self):
         effects_data = self.get_effects()
         effect_names = {effect['code']: effect['name'] for effect in effects_data if 'code' in effect}
 
-        slot_entries = []
         unique_codes = set()
-        for slot in EquipmentSlotsEnum:
-            attr = f'{slot}_slot'
-            label = re.sub(r'(\d)', r' \1', slot.replace('_', ' ')).capitalize()
-            item_code = getattr(self.character, attr, None)
-            slot_entries.append((label, item_code))
+        for slot_name in ('weapon', 'shield', 'helmet', 'body_armor', 'leg_armor', 'boots',
+                          'ring1', 'ring2', 'amulet', 'artifact1', 'artifact2', 'artifact3',
+                          'rune', 'utility1', 'utility2', 'bag'):
+            item_code = getattr(self.character, f'{slot_name}_slot', None)
             if item_code:
                 unique_codes.add(item_code)
 
-        print('Loading items data...', end='\r')
+        self.display.print('Loading items data...', end='\r')
         items_data = {}
         for code in unique_codes:
             items_data[code] = self.get_item(code)
-
-        print('=== Character Equipment ===')
-        for label, item_code in slot_entries:
-            if item_code:
-                item = items_data.get(item_code, {})
-                item_name = item.get('name', item_code)
-                print(f'  {label}: {item_name}')
-                effects = item.get('effects', []) or []
-                if effects:
-                    for effect in effects:
-                        effect_code = effect.get('code', '')
-                        value = effect.get('value', 0)
-                        effect_name = effect_names.get(effect_code, effect_code)
-                        print(f'    {effect_name}: {value}')
-            else:
-                print(f'  {label}: (empty)')
-
-    def _print_location_info(self, location_data):
-        """Print current location information: coordinates and name."""
-
-        name = location_data.get('name', 'Unknown')
-        x = location_data.get('x', '?')
-        y = location_data.get('y', '?')
-        layer = location_data.get('layer', '?')
-
-        print(f'\n=== Location: {name} ({x}, {y}) [{layer}] ===\n')
-        map_skin = location_data.get('skin', '')
-        if map_skin:
-            display_image(ImageCategoryEnum.MAPS, map_skin)
+        self.display.show_equipment(self.character, effect_names, items_data)
 
     def _choose_character(self):
         """Pick a character and bind it (plus its scenario storage) to this
@@ -353,8 +266,8 @@ class GameClient(BaseGameClient):
         characters = self.get_my_characters()
 
         if not characters:
-            print('You have no characters. Creating a new one...')
-            created = self.create_character()
+            self.display.print('You have no characters. Creating a new one...')
+            created = self._prompt_and_create_character()
             if not created:
                 sys.exit('Failed to create a character. Aborting.')
             characters = self.get_my_characters()
@@ -368,7 +281,7 @@ class GameClient(BaseGameClient):
         characters_map, characters_map_str = self._prepare_actions_menu_data(
             [character["name"] for character in characters],
         )
-        print(f'Characters on account: {", ".join(characters_map.values())}')
+        self.display.print(f'Characters on account: {", ".join(characters_map.values())}')
 
         idx = self._prompt_int(
             'Which character do you want to choose?\n'
@@ -382,11 +295,11 @@ class GameClient(BaseGameClient):
         return self._build_character(characters_map[idx])
 
     def _build_character(self, name):
-        character = Character(name, parent=self)
-        print(f'Selected character {name}.')
-        print(f'Level {character.level}, HP {character.hp}/{character.max_hp}, '
-              f'Gold {character.gold}, Cooldown {character.cooldown}s.')
-        display_image(ImageCategoryEnum.CHARACTERS, character.skin)
+        character = Character(name, parent=self, display=self.display)
+        self.display.print(f'Selected character {name}.')
+        self.display.print(f'Level {character.level}, HP {character.hp}/{character.max_hp}, '
+                           f'Gold {character.gold}, Cooldown {character.cooldown}s.')
+        self.display.show_image(ImageCategoryEnum.CHARACTERS, character.skin)
 
         return character
 
@@ -400,23 +313,27 @@ class GameClient(BaseGameClient):
             sys.exit('Can\'t reach the server. Please try again later.')
 
         data = response.json().get('data', {})
-        print(f'Game version: {data.get("version", "?")}.')
+        self.display.print(f'Game version: {data.get("version", "?")}.')
 
         season = data.get('season') or {}
         name = season.get('name', '?')
         number = season.get('number', '?')
         start = season.get('start_date', '?')
-        print(f'Current season: {name} (#{number}), started {start}.')
+        self.display.print(f'Current season: {name} (#{number}), started {start}.')
 
     def _get_with_reauth(self, url, data=None):
         """Run an authenticated GET, automatically offering a re-login if
         the token is rejected. Returns the response object."""
 
+        self.display.show_loading()
         response = self._get(url=url, data=data)
+        self.display.hide_loading()
 
         if self.is_invalid_token_error(response) and self.ensure_valid_token(probe_response=response):
             self._propagate_token_to_characters()
+            self.display.show_loading()
             response = self._get(url=url, data=data)
+            self.display.hide_loading()
 
         return response
 
@@ -424,11 +341,15 @@ class GameClient(BaseGameClient):
         """Run an authenticated POST, automatically offering a re-login if
         the token is rejected. Returns the response object."""
 
+        self.display.show_loading()
         response = self._post(url=url, data=data)
+        self.display.hide_loading()
 
         if self.is_invalid_token_error(response) and self.ensure_valid_token(probe_response=response):
             self._propagate_token_to_characters()
+            self.display.show_loading()
             response = self._post(url=url, data=data)
+            self.display.hide_loading()
 
         return response
 
@@ -445,23 +366,16 @@ class GameClient(BaseGameClient):
 
         return result
 
-    @staticmethod
-    def _print_error_silently(response):
+    def _print_error_silently(self, response):
         try:
             if error_block := response.json().get('error'):
-                print(error_block.get('message', 'Unknown error.'))
+                self.display.print(error_block.get('message', 'Unknown error.'))
         except ValueError:
             pass
 
-    def create_character(self, name=None, sex=None):
-        """Create a new character."""
-
-        if name is None:
-            name = self._prompt_character_name()
-        if sex is None:
-            sex = self._prompt_character_sex()
-
-        print(f'The new character\'s name is {name}, creating...')
+    def create_character(self, name, sex):
+        """Create a new character. Returns True on success."""
+        self.display.print(f'Creating character {name}...')
 
         create_request = self._post_with_reauth(
             url='/characters/create',
@@ -472,39 +386,45 @@ class GameClient(BaseGameClient):
         )
 
         if create_request.status_code == 200:
-            print(f'Character {name} successfully created.')
+            self.display.print(f'Character {name} successfully created.')
             return True
 
         if error_block := create_request.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
         return False
 
-    def _prompt_character_name(self):
-        result = ''
-        done = False
+    def _prompt_and_create_character(self):
+        """Prompt for name/sex via display and create character (console path)."""
+        name = self._display_prompt_character_name()
+        if name is None:
+            return False
+        sex = self._display_prompt_character_sex()
+        if sex is None:
+            return False
+        ok = self.create_character(name, sex)
+        if ok:
+            self.display.print('You can now select the new character from the menu.')
+        return ok
 
-        while not done:
-            name = input('What will the new character\'s name be?: ')
+    def _display_prompt_character_name(self):
+        while True:
+            name = self.display.prompt_str('New character name (3-12 chars, a-z, 0-9, _ -): ')
+            if name is None:
+                return None
             if re.match(r'^[a-zA-Z0-9_-]{3,12}$', name):
-                result = name
-                done = True
-            else:
-                print('That name doesn\'t fit, try another.')
+                return name
+            self.display.print('Name must be 3-12 characters using only a-z, 0-9, _, -.')
 
-        return result
-
-    def _prompt_character_sex(self):
-        result = ''
-        done = False
-
-        while not done:
-            sex = input('What sex will the character be? male(m)/female(f)/random(r): ')
+    def _display_prompt_character_sex(self):
+        while True:
+            sex = self.display.prompt_str('Sex: male (m) / female (f) / random (r): ')
+            if sex is None:
+                return None
+            sex = sex.strip().lower()
             if sex in ('m', 'f', 'r'):
-                result = sex
-                done = True
-
-        return result
+                return sex
+            self.display.print('Please enter m, f, or r.')
 
     def delete_character(self, name=''):
         """Delete a character."""
@@ -514,32 +434,38 @@ class GameClient(BaseGameClient):
 
         confirm = self._prompt_yes_no(f'Are you sure you want to permanently delete {name}?')
         if not confirm:
-            print('Deletion cancelled.')
+            self.display.print('Deletion cancelled.')
             return False
 
         response = self._post_with_reauth(url='/characters/delete', data={'name': name})
 
         if response.status_code == 200:
-            print(f'Character {name} successfully deleted.')
+            self.display.print(f'Character {name} successfully deleted.')
             return True
 
         if error_block := response.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
         return False
 
     def get_account_details(self):
-        """Show account details."""
+        """Return account details dict, or None on failure."""
 
         response = self._get_with_reauth(url='/my/details')
         if response.status_code != 200:
-            print('Failed to get account details.')
-            return
+            self.display.print('Failed to get account details.')
+            return None
 
         data = response.json().get('data', {})
-        print('=== Account details ===')
-        for key, value in data.items():
-            print(f'  {key}: {value}')
+        return data
+
+    def _show_account_details(self):
+        """Display account details (console path from account menu)."""
+        data = self.get_account_details()
+        if data is not None:
+            self.display.print('=== Account details ===')
+            for key, value in data.items():
+                self.display.print(f'  {key}: {value}')
 
     def change_password(self):
         """Change account password."""
@@ -552,11 +478,11 @@ class GameClient(BaseGameClient):
         })
 
         if response.status_code == 200:
-            print('Password changed. Note: your token has been reset, update config.ini.')
+            self.display.print('Password changed. Note: your token has been reset, update config.ini.')
             return
 
         if error_block := response.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
     def login_with_password(self):
         """Force a fresh login (replace the current token with one obtained
@@ -578,55 +504,14 @@ class GameClient(BaseGameClient):
                 obj.base_headers['Authorization'] = self.base_headers.get('Authorization', '')
 
     def _prepare_actions_menu_data(self, iterable):
-        def _display(item):
-            value = getattr(item, 'value', None)
-            if isinstance(value, str):
-                return value
-            if isinstance(item, dict):
-                for key in ('name', 'code'):
-                    if key in item:
-                        return str(item[key])
-            return str(item)
-
-        items_map = {idx: item for idx, item in enumerate(iterable, 1)}
-        items_map_str = "\n".join(
-            f"{idx} - {_display(name).replace('_', ' ').capitalize()}" for idx, name in items_map.items()
-        )
-
-        return items_map, items_map_str
+        return self.display.prepare_menu(iterable)
 
     def _prompt_int(self, prompt, min_val=None, max_val=None):
-        """Prompt the user for an integer. Empty input (just Enter) returns
-        None, which nested menus treat as 'go back to the parent menu'.
-        Non-numeric input and out-of-range values are re-prompted."""
+        return self.display.prompt_int(prompt, min_val, max_val)
 
-        result = None
-        done = False
+    def _prompt_str(self, prompt, allow_empty=True):
+        return self.display.prompt_str(prompt, allow_empty)
 
-        while not done:
-            raw = input(prompt).strip()
-            if not raw:
-                done = True
-                continue
-
-            try:
-                value = int(raw)
-            except ValueError:
-                print('Please enter a whole number (or press Enter to go back).')
-                continue
-
-            if min_val is not None and value < min_val:
-                print(f'Please enter a number >= {min_val}.')
-                continue
-
-            if max_val is not None and value > max_val:
-                print(f'Please enter a number <= {max_val}.')
-                continue
-
-            result = value
-            done = True
-
-        return result
 
     def character_movement(self):
         layer = getattr(self.character, 'layer', MapLayerEnum.OVERWORLD)
@@ -676,7 +561,7 @@ class GameClient(BaseGameClient):
         )
 
         if len(chosen_locations_map) == 0:
-            print('No destinations of the chosen type.')
+            self.display.print('No destinations of the chosen type.')
             return
 
         if len(chosen_locations_map) == 1:
@@ -705,9 +590,10 @@ class GameClient(BaseGameClient):
 
     def _do_fight(self, count):
         participants = self._collect_boss_participants() if self._at_boss() else []
-
+        self.display.start_batch(count)
         for _ in range(count):
             self.character.fight(participants=participants or None)
+        self.display.end_batch()
 
     def _at_boss(self):
         cur_location = self.get_location_data(self.character.layer, self.character.x, self.character.y)
@@ -752,8 +638,10 @@ class GameClient(BaseGameClient):
         self._do_gather(count)
 
     def _do_gather(self, count):
+        self.display.start_batch(count)
         for _ in range(count):
             self.character.gathering()
+        self.display.end_batch()
 
     def character_crafting(self):
         items_list = self._fetch_craftable_items()
@@ -784,7 +672,7 @@ class GameClient(BaseGameClient):
         content = location_data.get('content') or {}
 
         if content.get('type') != MapTypesEnum.WORKSHOP:
-            print('You can\'t craft anything at this location.')
+            self.display.print('You can\'t craft anything at this location.')
             return None
 
         workshop_type = content.get('code', '')
@@ -794,13 +682,12 @@ class GameClient(BaseGameClient):
         )
 
         if not items_list:
-            print('No craftable items available for your level at this workshop.')
+            self.display.print('No craftable items available for your level at this workshop.')
             return None
 
         return items_list
 
-    @staticmethod
-    def _resolve_craft_code(items_list, items_map, craft_idx):
+    def _resolve_craft_code(self, items_list, items_map, craft_idx):
         return next(
             (it['code'] for it in items_list if it['name'] == items_map[craft_idx]),
             '',
@@ -808,12 +695,12 @@ class GameClient(BaseGameClient):
 
     def character_recycling(self):
         if not self._at_workshop():
-            print('You can\'t recycle anything at this location.')
+            self.display.print('You can\'t recycle anything at this location.')
             return
 
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         inventory_map, inventory_map_str = self._prepare_actions_menu_data(
@@ -865,7 +752,7 @@ class GameClient(BaseGameClient):
     def character_equip(self):
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         inventory_map, inventory_map_str = self._prepare_actions_menu_data(
@@ -885,11 +772,11 @@ class GameClient(BaseGameClient):
         item_code = inventory_map[chosen_item_idx]
         item_data = self.get_item(item_code)
         if item_data['type'] not in ItemTypesEnum.EQUIP_TYPES:
-            print('This item type is not equippable.')
+            self.display.print('This item type is not equippable.')
             return
 
         if item_data.get('level', 0) > self.character.level:
-            print(f"You need to be level {item_data['level']} to equip this item.")
+            self.display.print(f"You need to be level {item_data['level']} to equip this item.")
             return
 
         matching_slots = [
@@ -900,18 +787,21 @@ class GameClient(BaseGameClient):
         ]
 
         if not matching_slots:
-            print('Could not determine a slot for this item.')
+            self.display.print('Could not determine a slot for this item.')
             return
 
         if len(matching_slots) == 1:
             equip_slot = matching_slots[0]
         else:
+            def _slot_label(s):
+                return s.replace('_slot', '').replace('_', ' ').title()
+
             slot_options = [
                 {
                     'code': s,
-                    'name': f'{s} (occupied: {getattr(self.character, f"{s}_slot", "")})'
+                    'name': f'{_slot_label(s)} (occupied)'
                             if getattr(self.character, f'{s}_slot', None)
-                            else f'{s} (empty)',
+                            else f'{_slot_label(s)} (empty)'
                 }
                 for s in matching_slots
             ]
@@ -925,7 +815,18 @@ class GameClient(BaseGameClient):
                 return
             equip_slot = slots_map[chosen_idx]['code']
 
-        self.character.equip(item_code, equip_slot)
+        quantity = None
+        if equip_slot in ('utility1', 'utility2'):
+            inv_qty = next(
+                (s.get('quantity', 1) for s in (self.character.inventory or [])
+                 if s.get('code') == item_code),
+                1,
+            )
+            qty = self._prompt_int(f'How many to equip (max {inv_qty})?: ', min_val=1)
+            if qty is not None:
+                quantity = qty
+
+        self.character.equip(item_code, equip_slot, quantity)
 
     def character_unequip(self):
         slots_map, slots_map_str = self._prepare_actions_menu_data(
@@ -944,7 +845,7 @@ class GameClient(BaseGameClient):
     def character_use_item(self):
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         inventory_map, inventory_map_str = self._prepare_actions_menu_data(
@@ -975,7 +876,7 @@ class GameClient(BaseGameClient):
     def character_delete_item(self):
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         inventory_map, inventory_map_str = self._prepare_actions_menu_data(
@@ -1060,7 +961,7 @@ class GameClient(BaseGameClient):
     def character_claim_pending_item(self):
         items = self.get_my_pending_items()
         if not items:
-            print('No pending items to claim.')
+            self.display.print('No pending items to claim.')
             return
 
         items_map, items_str = self._prepare_actions_menu_data(
@@ -1117,7 +1018,7 @@ class GameClient(BaseGameClient):
     def character_deposit_item_to_bank(self):
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         inventory_map, inventory_map_str = self._prepare_actions_menu_data(
@@ -1148,7 +1049,7 @@ class GameClient(BaseGameClient):
     def character_withdraw_item_from_bank(self):
         bank_items = self.get_my_bank_items()
         if not bank_items:
-            print('Bank is empty.')
+            self.display.print('Bank is empty.')
             return
 
         bank_items_map, bank_items_map_str = self._prepare_actions_menu_data(
@@ -1197,7 +1098,7 @@ class GameClient(BaseGameClient):
             [c['name'] for c in my_chars if c['name'] != self.character.name]
         )
         if not others_map:
-            print('You have no other characters.')
+            self.display.print('You have no other characters.')
             return
 
         idx = self._prompt_int(
@@ -1224,7 +1125,7 @@ class GameClient(BaseGameClient):
             [c['name'] for c in my_chars if c['name'] != self.character.name]
         )
         if not others_map:
-            print('You have no other characters.')
+            self.display.print('You have no other characters.')
             return
 
         idx = self._prompt_int(
@@ -1241,7 +1142,7 @@ class GameClient(BaseGameClient):
         target = others_map[idx]
         inventory = self._non_empty_inventory()
         if not inventory:
-            print('Your inventory is empty.')
+            self.display.print('Your inventory is empty.')
             return
 
         items_map, items_str = self._prepare_actions_menu_data(
@@ -1272,7 +1173,7 @@ class GameClient(BaseGameClient):
     def character_ge_buy_item(self):
         orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.SELL)
         if not orders:
-            print('No sell orders available to buy from.')
+            self.display.print('No sell orders available to buy from.')
             return
 
         orders_map, orders_str = self._prepare_actions_menu_data(
@@ -1342,7 +1243,7 @@ class GameClient(BaseGameClient):
     def character_ge_fill_order(self):
         orders = self.get_my_ge_orders(order_type=GEOrderTypeEnum.BUY)
         if not orders:
-            print('No buy orders to fill.')
+            self.display.print('No buy orders to fill.')
             return
 
         orders_map, orders_str = self._prepare_actions_menu_data(
@@ -1369,7 +1270,7 @@ class GameClient(BaseGameClient):
     def character_ge_cancel_order(self):
         orders = self.get_my_ge_orders()
         if not orders:
-            print('You have no open GE orders.')
+            self.display.print('You have no open GE orders.')
             return
 
         orders_map, orders_str = self._prepare_actions_menu_data(
@@ -1389,47 +1290,47 @@ class GameClient(BaseGameClient):
         bank = self.get_my_bank()
         bank_items = self.get_my_bank_items()
         if not bank:
-            print('Could not get bank details.')
+            self.display.print('Could not get bank details.')
             return
 
         self._print_bank(bank, bank_items)
 
     def _print_bank(self, bank, bank_items):
-        print('=== Bank details ===')
-        print(f'  Slots: {bank.get("slots")}')
-        print(f'  Expansions: {bank.get("expansions")}')
-        print(f'  Next expansion cost: {bank.get("next_expansion_cost")}g')
-        print(f'  Gold: {bank.get("gold")}g')
+        self.display.print('=== Bank details ===')
+        self.display.print(f'  Slots: {bank.get("slots")}')
+        self.display.print(f'  Expansions: {bank.get("expansions")}')
+        self.display.print(f'  Next expansion cost: {bank.get("next_expansion_cost")}g')
+        self.display.print(f'  Gold: {bank.get("gold")}g')
 
         if bank_items:
-            print('  Items:')
+            self.display.print('  Items:')
             for it in bank_items:
-                print(f'    {it["code"]} x{it.get("quantity", 1)}')
+                self.display.print(f'    {it["code"]} x{it.get("quantity", 1)}')
         else:
-            print('  Items: (empty)')
+            self.display.print('  Items: (empty)')
 
     def show_pending_items(self):
         items = self.get_my_pending_items()
         if not items:
-            print('No pending items.')
+            self.display.print('No pending items.')
             return
 
-        print('=== Pending items ===')
+        self.display.print('=== Pending items ===')
         for it in items:
-            print(f'  [{it.get("source", "?")}] {it.get("description", "")} '
+            self.display.print(f'  [{it.get("source", "?")}] {it.get("description", "")} '
                   f'(id={it.get("id")}, gold={it.get("gold", 0)})')
             for sub in it.get('items', []) or []:
-                print(f'    -> {sub["code"]} x{sub.get("quantity", 1)}')
+                self.display.print(f'    -> {sub["code"]} x{sub.get("quantity", 1)}')
 
     def show_ge_orders(self):
         orders = self.get_my_ge_orders()
         if not orders:
-            print('No open GE orders.')
+            self.display.print('No open GE orders.')
             return
 
-        print('=== My GE orders ===')
+        self.display.print('=== My GE orders ===')
         for o in orders:
-            print(f'  [{o["type"]}] {o["code"]} x{o["quantity"]} @ {o["price"]}g '
+            self.display.print(f'  [{o["type"]}] {o["code"]} x{o["quantity"]} @ {o["price"]}g '
                   f'(id={o["id"]}, created={o.get("created_at", "?")})')
 
     def use_scenario(self):
@@ -1448,11 +1349,11 @@ class GameClient(BaseGameClient):
         category = scenarios_category_map[category_idx]
         category_scenarios = self.scenarios_storage.scenarios_category_map[category]()
         scenarios_map, scenarios_map_str = self._prepare_actions_menu_data(
-            [GameClient._scenario_name(scenario) for scenario in category_scenarios]
+            [self._scenario_name(scenario) for scenario in category_scenarios]
         )
 
         if not scenarios_map:
-            print('No scenarios available in this category yet.')
+            self.display.print('No scenarios available in this category yet.')
             return
 
         if len(scenarios_map) == 1:
@@ -1471,47 +1372,41 @@ class GameClient(BaseGameClient):
     def _run_scenario(self, category_scenarios, scenarios_map, scenario_idx):
         selected_scenario = next(
             scenario for scenario in category_scenarios
-            if GameClient._scenario_name(scenario) == scenarios_map[scenario_idx]
+            if self._scenario_name(scenario) == scenarios_map[scenario_idx]
         )
         params = self._collect_scenario_params(selected_scenario)
         repeats = self._scenario_repeats(params)
-        self._invoke_scenario(selected_scenario, params, repeats)
+        self._invoke_scenario(selected_scenario, params, repeats, self.display)
 
-    @staticmethod
-    def _scenario_name(scenario):
-        name = getattr(scenario, '__name__', None)
-        if name is None:
-            name = scenario.func.__name__
-        return name
-
-    @staticmethod
-    def _collect_scenario_params(selected_scenario):
+    def _collect_scenario_params(self, scenario):
+        import inspect
+        sig = inspect.signature(scenario)
         params = {}
-        print('Specify the values of the scenario startup parameters')
-        for name, parameter in dict(inspect.signature(selected_scenario).parameters).items():
-            parameter_type = type(parameter.default)
-            raw = input(f'{name} (default: {parameter.default}): ')
-            if raw == '':
-                params[name] = parameter.default
+        for name, param in sig.parameters.items():
+            if param.default is inspect.Parameter.empty:
+                val = self._prompt_int(f'Enter value for "{name}": ', min_val=1)
+                if val is not None:
+                    params[name] = val
             else:
-                try:
-                    params[name] = parameter_type(raw)
-                except (ValueError, TypeError):
-                    params[name] = raw
+                hint = f' (default: {param.default})'
+                val = self._prompt_int(f'Enter value for "{name}"{hint}: ', min_val=1)
+                if val is not None:
+                    params[name] = val
         return params
 
     def _scenario_repeats(self, params):
-        result = 1
-        if bool(params.get('sell', '')):
-            prompted = self._prompt_int('How many times to repeat the scenario?: ', min_val=1)
-            if prompted is not None:
-                result = prompted
-        return result
+        return params.pop('quantity', params.pop('count', 1))
 
-    @staticmethod
-    def _invoke_scenario(scenario, params, repeats):
+    def _scenario_name(self, scenario):
+        return scenario.func.__name__.replace('_', ' ').title()
+
+    def _invoke_scenario(self, scenario, params, repeats, display=None):
+        if display and repeats > 1:
+            display.start_batch(repeats)
         for _ in range(max(1, repeats)):
             scenario(**params)
+        if display and repeats > 1:
+            display.end_batch()
 
     def get_location_data(self, layer='overworld', x=0, y=0):
         location_data = self._get_with_reauth(url=f'/maps/{layer}/{x}/{y}')
@@ -1519,7 +1414,7 @@ class GameClient(BaseGameClient):
             return location_data.json().get('data', {})
 
         if error_block := location_data.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
         return {}
 
@@ -1549,7 +1444,7 @@ class GameClient(BaseGameClient):
             response = self._get_with_reauth(url=url, data=page_params)
             if response.status_code != 200:
                 if error_block := response.json().get('error'):
-                    print(error_block.get('message', 'Unknown error.'))
+                    self.display.print(error_block.get('message', 'Unknown error.'))
                 return result if result else default
 
             payload = response.json()
@@ -1792,11 +1687,11 @@ class GameClient(BaseGameClient):
 
         response = self._post_with_reauth(url='/events/spawn', data={'code': code})
         if response.status_code == 200:
-            print(f'Event {code} spawned.')
+            self.display.print(f'Event {code} spawned.')
             return
 
         if error_block := response.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
     def get_ge_history_by_code(self, code='', account=''):
         params = {}
@@ -1910,36 +1805,33 @@ class GameClient(BaseGameClient):
         if response.status_code == 200:
             self._print_simulation_result(response, iterations)
         elif error_block := response.json().get('error'):
-            print(error_block.get('message', 'Unknown error.'))
+            self.display.print(error_block.get('message', 'Unknown error.'))
 
-    @staticmethod
-    def _prompt_iterations():
-        try:
-            return int(input('Iterations (default 1000): ') or 1000)
-        except ValueError:
-            return 1000
+    def _prompt_iterations(self):
+        val = self.display.prompt_int('Iterations (default 1000): ')
+        return val if val else 1000
 
-    @staticmethod
-    def _prompt_simulation_characters():
-        chars_raw = input('Character config as JSON (list of dicts, see docs). Press Enter to use defaults: ')
-        if not chars_raw.strip():
+    def _prompt_simulation_characters(self):
+        chars_raw = self.display.prompt_str(
+            'Character config as JSON (list of dicts, see docs). Press Enter to use defaults: '
+        )
+        if not chars_raw or not chars_raw.strip():
             return []
 
         try:
             import json as _json
             return _json.loads(chars_raw)
         except ValueError as err:
-            print(f'Invalid JSON: {err}')
+            self.display.print(f'Invalid JSON: {err}')
             return None
 
-    @staticmethod
-    def _print_simulation_result(response, iterations):
+    def _print_simulation_result(self, response, iterations):
         data = response.json().get('data', {})
-        print('=== Simulation result ===')
-        print(f'  Monster: {data.get("monster", {}).get("name", "?")} (lvl {data.get("monster", {}).get("level", "?")})')
-        print(f'  Win rate: {data.get("win_rate", "?")}%')
-        print(f'  Average turns: {data.get("average_turns", "?")}')
-        print(f'  Total simulations: {iterations}')
+        self.display.print('=== Simulation result ===')
+        self.display.print(f'  Monster: {data.get("monster", {}).get("name", "?")} (lvl {data.get("monster", {}).get("level", "?")})')
+        self.display.print(f'  Win rate: {data.get("win_rate", "?")}%')
+        self.display.print(f'  Average turns: {data.get("average_turns", "?")}')
+        self.display.print(f'  Total simulations: {iterations}')
 
 
 class Character(BaseGameClient):
@@ -1972,11 +1864,12 @@ class Character(BaseGameClient):
         'inventory_max_items', 'inventory',
     )
 
-    def __init__(self, name, parent=None) -> None:
+    def __init__(self, name, parent=None, display=None) -> None:
         super().__init__()
 
         self.name = name
         self.parent = parent
+        self.display = display or ConsoleDisplay()
         self.base_character_action_url = f'/my/{self.name}/action'
         self.refresh()
 
@@ -1986,11 +1879,15 @@ class Character(BaseGameClient):
         propagates the new token to the parent client so account-level
         calls don't have to re-auth again."""
 
+        self.display.show_loading()
         response = self._get(url=url, data=data)
+        self.display.hide_loading()
 
         if self.is_invalid_token_error(response) and self.ensure_valid_token(probe_response=response):
             self._propagate_token_to_parent()
+            self.display.show_loading()
             response = self._get(url=url, data=data)
+            self.display.hide_loading()
 
         return response
 
@@ -1998,11 +1895,15 @@ class Character(BaseGameClient):
         """Run an authenticated POST with the same re-login behaviour as
         _get_with_reauth."""
 
+        self.display.show_loading()
         response = self._post(url=url, data=data)
+        self.display.hide_loading()
 
         if self.is_invalid_token_error(response) and self.ensure_valid_token(probe_response=response):
             self._propagate_token_to_parent()
+            self.display.show_loading()
             response = self._post(url=url, data=data)
+            self.display.hide_loading()
 
         return response
 
@@ -2023,7 +1924,7 @@ class Character(BaseGameClient):
         response = self._get_with_reauth(url=f'/characters/{self.name}')
         if response.status_code != 200:
             if error_block := response.json().get('error'):
-                print(error_block.get('message', 'Unknown error.'))
+                self.display.print(error_block.get('message', 'Unknown error.'))
             return
 
         for key in self.CHARACTER_INFO_FIELDS:
@@ -2043,59 +1944,14 @@ class Character(BaseGameClient):
             logs = last_action_data.json().get('data', [])
             if logs:
                 log = logs[0]
-                print(log.get('description', ''))
-                self._print_action_details(log)
+                self.display.show_action_log(log.get('description', ''))
+                self.display.show_action_details(log)
             else:
-                print('No recent actions.')
+                self.display.print('No recent actions.')
         elif error_block := last_action_data.json().get('error'):
-            print(f'Can\'t get last action. {error_block.get("message", "Unknown error.")}.')
+            self.display.print(f'Can\'t get last action. {error_block.get("message", "Unknown error.")}.')
 
         self.refresh()
-
-    def _print_action_details(self, source):
-        """Extract and print XP, gold, items from log or action response."""
-        details = []
-        xp = None
-        gold = None
-        items = None
-
-        # Log format: {xp, gold, items}
-        if 'xp' in source or 'gold' in source or 'items' in source:
-            xp = source.get('xp')
-            gold = source.get('gold')
-            items = source.get('items')
-        # Skill action (gathering/crafting): {details: {xp, items}}
-        elif 'details' in source:
-            det = source.get('details', {})
-            xp = det.get('xp')
-            items = det.get('items')
-        # Recycling: {details: {items}} (no XP)
-        # Fight: {fight: {characters: [{xp, gold, drops}]}}
-        elif 'fight' in source:
-            fight = source.get('fight', {})
-            chars = fight.get('characters', [])
-            if chars:
-                main = chars[0]
-                xp = main.get('xp')
-                gold = main.get('gold')
-                items = main.get('drops')
-
-        if xp is not None:
-            details.append(f'XP: {xp}')
-
-        if gold is not None:
-            details.append(f'Gold: {gold:d}')
-
-        if items:
-            items_data = []
-            for item in items:
-                code = item.get('code', '?')
-                qty = item.get('quantity', 1)
-                items_data.append(f'{code} {qty:d}')
-
-            details.append(f"Items: {', '.join(items_data)}" )
-        if details:
-            print('  ' + '\n  '.join(details))
 
     def _do_action(self, action_name='', action_data=None):
         if action_data is None:
@@ -2115,18 +1971,18 @@ class Character(BaseGameClient):
             cooldown = data.get('cooldown', {})
             reason = cooldown.get('reason', action_name)
             total_seconds = cooldown.get('total_seconds', 0)
-            print(f'Performing action {reason}. It\'ll take {total_seconds} seconds.')
+            self.display.show_action_in_progress(reason, total_seconds)
 
             for i in range(total_seconds, 0, -1):
-                print(f'Waiting {i} seconds...', end=' \r')
+                self.display.show_action_countdown(i)
                 sleep(1)
 
-            print(' ' * 40, end='\r')
-            self._print_action_details(data)
+            self.display.clear_action_countdown()
+            self.display.show_action_details(data)
             self._get_last_action()
             result = data
         elif error_block := action_request.json().get('error'):
-            print(f'Can\'t perform action. {error_block.get("message", "Unknown error.")}')
+            self.display.show_action_error(error_block.get("message", "Unknown error."))
 
         return result
 
@@ -2146,63 +2002,10 @@ class Character(BaseGameClient):
 
     def fight(self, participants=None):
         if self.hp < self.max_hp / 2:
-            print(f'HP too low ({self.hp}/{self.max_hp}). Resting...')
+            self.display.print(f'HP too low ({self.hp}/{self.max_hp}). Resting...')
             self.rest()
 
-        inventory = getattr(self, 'inventory', None) or []
-        max_items = getattr(self, 'inventory_max_items', 100)
-        total_quantity = sum(s.get('quantity', 0) for s in inventory if s.get('code'))
-        fill_ratio = total_quantity / max_items if max_items else 0
-
-        if fill_ratio > 0.9:
-            unique_codes = set()
-            for entry in inventory:
-                code = entry.get('code')
-                if code:
-                    unique_codes.add(code)
-
-            equip_types = set(ItemTypesEnum.EQUIP_TYPES)
-            codes_to_deposit = []
-
-            for code in unique_codes:
-                response = self._get(url=f'/items/{code}')
-                if response.status_code == 200:
-                    item_type = response.json().get('data', {}).get('type')
-                    if item_type not in equip_types:
-                        codes_to_deposit.append(code)
-
-            if codes_to_deposit:
-                origin_x, origin_y = self.x, self.y
-                at_bank = False
-
-                location = self._get(url=f'/maps/{self.layer}/{self.x}/{self.y}')
-                if location.status_code == 200:
-                    content_type = (location.json().get('data', {}).get('content') or {}).get('type')
-                    at_bank = content_type == 'bank'
-
-                if not at_bank:
-                    banks = self._get(url='/maps', data={'content_type': 'bank', 'layer': self.layer, 'size': 100})
-                    if banks.status_code == 200:
-                        bank_list = banks.json().get('data', [])
-                        if bank_list:
-                            bank = bank_list[0]
-                            print(f'Moving to bank ({bank["x"]}, {bank["y"]}) to deposit...')
-                            self.move(bank['x'], bank['y'])
-
-                inv_by_code = {}
-                for entry in (getattr(self, 'inventory', None) or []):
-                    c = entry.get('code')
-                    if c:
-                        inv_by_code[c] = inv_by_code.get(c, 0) + entry.get('quantity', 0)
-
-                print(f'Inventory {total_quantity}/{max_items} (>90%). Depositing...')
-                deposit_list = [(code, inv_by_code.get(code, 0)) for code in codes_to_deposit if inv_by_code.get(code, 0) > 0]
-                if deposit_list:
-                    self.deposit_items(deposit_list)
-
-                if not at_bank and (self.x != origin_x or self.y != origin_y):
-                    print('Moving back to original location...')
-                    self.move(origin_x, origin_y)
+        self._deposit_non_equip_if_full()
 
         data = {}
         if participants:
@@ -2273,7 +2076,7 @@ class Character(BaseGameClient):
                         break
 
         if best_value > current_value:
-            print(f'Equipping {best_code} (+{best_value} {skill_code})...')
+            self.display.print(f'Equipping {best_code} (+{best_value} {skill_code})...')
             self.equip(best_code, 'weapon')
 
     def gathering(self):
@@ -2281,6 +2084,7 @@ class Character(BaseGameClient):
         if skill_code:
             self._equip_best_gathering_weapon(skill_code)
 
+        self._deposit_non_equip_if_full()
         return self._do_action('gathering')
 
     def _deposit_non_equip_if_full(self):
@@ -2321,7 +2125,7 @@ class Character(BaseGameClient):
                         bank_list = banks.json().get('data', [])
                         if bank_list:
                             bank = bank_list[0]
-                            print(f'Moving to bank ({bank["x"]}, {bank["y"]}) to deposit...')
+                            self.display.print(f'Moving to bank ({bank["x"]}, {bank["y"]}) to deposit...')
                             self.move(bank['x'], bank['y'])
 
                 inv_by_code = {}
@@ -2330,13 +2134,13 @@ class Character(BaseGameClient):
                     if c:
                         inv_by_code[c] = inv_by_code.get(c, 0) + entry.get('quantity', 0)
 
-                print(f'Inventory {total_quantity}/{max_items} (>90%). Depositing...')
+                self.display.print(f'Inventory {total_quantity}/{max_items} (>90%). Depositing...')
                 deposit_list = [(code, inv_by_code.get(code, 0)) for code in codes_to_deposit if inv_by_code.get(code, 0) > 0]
                 if deposit_list:
                     self.deposit_items(deposit_list)
 
                 if not at_bank and (self.x != origin_x or self.y != origin_y):
-                    print('Moving back to original location...')
+                    self.display.print('Moving back to original location...')
                     self.move(origin_x, origin_y)
 
     def crafting(self, code='', quantity=1):
@@ -2457,3 +2261,90 @@ class Character(BaseGameClient):
 
     def npc_sell(self, code='', quantity=1):
         return self._do_action('npc/sell', {'code': code, 'quantity': quantity})
+
+
+class ConsoleDisplay(Display):
+    """Terminal-based I/O: delegates to print/input."""
+
+    def _output(self, text):
+        print(text)
+
+    def _show_window(self, title, text):
+        print(f'=== {title} ===')
+        print(text)
+
+    def _update_char_info(self, text):
+        print(f'Character: {text}')
+
+    def _update_location_text(self, text):
+        print(f'\n=== Location: {text} ===\n')
+
+    def print(self, *args, **kwargs):
+        print(*args, **kwargs)
+
+    def show_action_countdown(self, seconds_left):
+        print(f'Waiting {seconds_left} seconds...', end=' \r')
+
+    def clear_action_countdown(self):
+        print(' ' * 40, end='\r')
+
+    def input(self, prompt=''):
+        return input(prompt)
+
+    def prompt_int(self, prompt, min_val=None, max_val=None):
+        result = None
+        done = False
+        while not done:
+            raw = input(prompt).strip()
+            if not raw:
+                done = True
+                continue
+            try:
+                value = int(raw)
+            except ValueError:
+                print('Please enter a whole number (or press Enter to go back).')
+                continue
+            if min_val is not None and value < min_val:
+                print(f'Please enter a number >= {min_val}.')
+                continue
+            if max_val is not None and value > max_val:
+                print(f'Please enter a number <= {max_val}.')
+                continue
+            result = value
+            done = True
+        return result
+
+    def prompt_str(self, prompt, allow_empty=True):
+        while True:
+            raw = input(prompt).strip()
+            if not raw and not allow_empty:
+                print('Input cannot be empty.')
+                continue
+            return raw if raw else None
+
+    def prompt_yes_no(self, prompt):
+        while True:
+            answer = input(prompt).strip().lower()
+            if answer in ('y', 'ye', 'yes'):
+                return True
+            elif answer in ('n', 'no'):
+                return False
+            print('Please answer y or n.')
+
+    def show_image(self, category, key):
+        display_image(category, key)
+
+    def show_location(self, location_data):
+        super().show_location(location_data)
+        map_skin = location_data.get('skin', '')
+        if map_skin:
+            display_image(ImageCategoryEnum.MAPS, map_skin)
+
+    def show_basic_actions(self, location_type):
+        pass
+
+    def show_advanced_actions(self):
+        pass
+
+    def show_character_actions(self):
+        pass

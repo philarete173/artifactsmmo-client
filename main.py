@@ -1,5 +1,4 @@
-from api import GameClient
-
 if __name__ == '__main__':
-    client = GameClient()
-    client.main_loop()
+    print('ArtifactsMMO Client')
+    print('  Console: python -m console_client.main')
+    print('  GUI:     python -m gui_client.main')

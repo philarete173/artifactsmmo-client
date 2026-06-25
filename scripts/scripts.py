@@ -1,7 +1,7 @@
 import functools
 from base import BaseClient
-from enums import MapTypesEnum, TaskTypeEnum
-from items_scripts import ItemsScenarios
+from base.enums import MapTypesEnum, TaskTypeEnum
+from scripts.items_scripts import ItemsScenarios, _prompt_int
 
 
 class _ScenarioHelpers(BaseClient):
@@ -47,7 +47,7 @@ class _ScenarioHelpers(BaseClient):
         location = cls._fetch_location_coordinates(character, content_code, content_type)
 
         if location is None and (error_block := character._get(url='/maps', data={'size': 1}).json().get('error')):
-            print(f'Can\'t get location data. {error_block.get("message", "Unknown error.")}.')
+            character.display.print(f'Can\'t get location data. {error_block.get("message", "Unknown error.")}.')
 
         return location
 
@@ -87,20 +87,27 @@ class _ScenarioHelpers(BaseClient):
 
     @classmethod
     def _handle_post_craft(cls, character, item_code='', quantity=1):
-        choice = input(
-            f'Crafted {item_code} x{quantity}. What to do?\n'
-            '[s]ell, [r]ecycle, [n]othing: '
-        ).strip().lower()
+        lines = [
+            f'Crafted {item_code} x{quantity}. What to do?',
+            '  1 - Sell',
+            '  2 - Recycle',
+            '  3 - Nothing',
+            'Please type a number: ',
+        ]
+        choice = _prompt_int('\n'.join(lines), min_val=1, max_val=3, display=character.display)
+        if choice is None:
+            return
+        action = {1: 's', 2: 'r', 3: 'n'}.get(choice, 'n')
 
-        if choice == 's':
+        if action == 's':
             cls._sell_item(character, item_code, quantity)
-        elif choice == 'r':
+        elif action == 'r':
             ws = cls._get_workshop_for_item_code(character, item_code)
             if ws:
                 character.move(*ws[:2])
                 character.recycling(item_code, quantity)
             else:
-                print('No workshop found for recycling.')
+                character.display.print('No workshop found for recycling.')
 
 
 class OtherScenarios(_ScenarioHelpers):
@@ -123,7 +130,7 @@ class OtherScenarios(_ScenarioHelpers):
         if location:
             cls._run_task_master_quests(character, location, quantity)
         else:
-            print('Can\'t locate Tasks Master.')
+            character.display.print('Can\'t locate Tasks Master.')
 
     @classmethod
     def _run_task_master_quests(cls, character, location, quantity):
@@ -140,7 +147,7 @@ class OtherScenarios(_ScenarioHelpers):
                 if monster_location:
                     cls._run_monster_task(character, tasks_x, tasks_y, monster_location)
             else:
-                print('Can\'t process this type of task yet.')
+                character.display.print('Can\'t process this type of task yet.')
                 break
 
     @classmethod
@@ -159,7 +166,7 @@ class OtherScenarios(_ScenarioHelpers):
         if bank:
             cls._deposit_inventory_to_bank(character, bank)
         else:
-            print('Can\'t locate bank.')
+            character.display.print('Can\'t locate bank.')
 
     @classmethod
     def _deposit_inventory_to_bank(cls, character, bank):
@@ -179,7 +186,7 @@ class OtherScenarios(_ScenarioHelpers):
         if bank:
             cls._deposit_gold(character, bank, quantity)
         else:
-            print('Can\'t locate bank.')
+            character.display.print('Can\'t locate bank.')
 
     @classmethod
     def _deposit_gold(cls, character, bank, quantity):

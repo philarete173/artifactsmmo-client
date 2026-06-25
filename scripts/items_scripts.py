@@ -1,5 +1,5 @@
 from base import BaseClient, BaseGameClient
-from enums import MapTypesEnum
+from base.enums import MapTypesEnum
 
 
 ITEMS_MAX_PAGE_SIZE = 10000
@@ -15,31 +15,11 @@ CRAFT_SKILL_LEVEL_ATTR = {
 }
 
 
-def _prompt_int(prompt, min_val=None, max_val=None):
-    """Read an integer from stdin. Empty input returns None (back signal)."""
-    while True:
-        try:
-            raw = input(prompt).strip()
-
-            if raw == '':
-                return None
-
-            value = int(raw)
-
-            if min_val is not None and value < min_val:
-                print(f'Please enter a number >= {min_val}.')
-
-                continue
-
-            if max_val is not None and value > max_val:
-                print(f'Please enter a number <= {max_val}.')
-
-                continue
-
-            return value
-
-        except ValueError:
-            print('Please enter a whole number (or press Enter to go back).')
+def _prompt_int(prompt, min_val=None, max_val=None, display=None):
+    if display is None:
+        from console_client.api import ConsoleDisplay
+        display = ConsoleDisplay()
+    return display.prompt_int(prompt, min_val=min_val, max_val=max_val)
 
 
 def _inventory_quantity(character, item_code):
@@ -61,7 +41,10 @@ def _fetch_item_details(character, item_code):
     return response.json().get('data', {})
 
 
-def _fetch_items_by_skill(character, craft_skill):
+def _fetch_items_by_skill(character, craft_skill, display=None):
+    if display is None:
+        from console_client.api import ConsoleDisplay
+        display = ConsoleDisplay()
     """Fetch all craftable items for a skill, grouped by type.
 
     Single GET to ``/items?craft_skill=X&max_level=Y&size=10000`` (no type filter).
@@ -82,7 +65,7 @@ def _fetch_items_by_skill(character, craft_skill):
 
     if response.status_code != 200:
         error_block = response.json().get('error', {})
-        print(f'Can\'t fetch items: {error_block.get("message", "Unknown error.")}.')
+        display.print(f'Can\'t fetch items: {error_block.get("message", "Unknown error.")}.')
 
         return {}
 
@@ -91,7 +74,7 @@ def _fetch_items_by_skill(character, craft_skill):
     total = body.get('total')
 
     if total and total > len(data):
-        print(f'Warning: {total} matching items exist but only {len(data)} returned.')
+        display.print(f'Warning: {total} matching items exist but only {len(data)} returned.')
 
     items_by_type = {}
 
@@ -157,7 +140,7 @@ def _fight_loop(character, item_code, quantity):
         character.fight()
 
 
-def _gather_base_item(character, item_code, quantity):
+def _gather_base_item(character, item_code, quantity, display=None):
     """Move to and gather a base resource that has no recipe of its own."""
     resource_response = character._get(url='/resources', data={'drop': item_code, 'size': 1})
     resource = None
@@ -193,7 +176,7 @@ def _gather_base_item(character, item_code, quantity):
 
         return
 
-    print(f'Warning: don\'t know where to get {item_code}.')
+    display.print(f'Warning: don\'t know where to get {item_code}.')
 
 
 def _fetch_bank_quantity(character, item_code):
@@ -265,50 +248,56 @@ class ItemsScenarios(BaseGameClient):
         if craft_skill is None:
             return
 
-        items_by_type = _fetch_items_by_skill(character, craft_skill)
+        items_by_type = _fetch_items_by_skill(character, craft_skill, display=character.display)
 
         if not items_by_type:
             level = getattr(character, cls.CRAFT_SKILL_LEVEL_ATTR[craft_skill], 0)
-            print(f'No craftable items for {craft_skill} at level {level}.')
+            character.display.print(f'No craftable items for {craft_skill} at level {level}.')
 
             return
 
-        item_type = cls._prompt_item_type(items_by_type)
+        item_type = cls._prompt_item_type(items_by_type, character.display)
 
         if item_type is None:
             return
 
         items = items_by_type[item_type]
-        item = cls._prompt_item(items)
+        item = cls._prompt_item(items, character.display)
 
         if item is None:
             return
 
-        quantity = _prompt_int('How many do you want to craft? [default: 1]: ', min_val=1)
+        quantity = _prompt_int('How many do you want to craft? [default: 1]: ', min_val=1, display=character.display)
 
         if quantity is None:
             quantity = 1
 
-        post_craft = cls._prompt_post_craft()
+        post_craft = cls._prompt_post_craft(character)
         cls._execute_craft(character, item, quantity, post_craft)
 
     @classmethod
-    def _prompt_post_craft(cls):
-        choice = input('After crafting: [s]ell, [r]ecycle, [n]othing? ').strip().lower()
-        if choice in ('s', 'r'):
-            return choice
-        return 'n'
+    def _prompt_post_craft(cls, character):
+        lines = [
+            'What to do with items after crafting?',
+            '  1 - Sell',
+            '  2 - Recycle',
+            '  3 - Nothing',
+            'Please type a number: ',
+        ]
+        choice = _prompt_int('\n'.join(lines), min_val=1, max_val=3, display=character.display)
+        if choice is None:
+            return 'n'
+        return {1: 's', 2: 'r', 3: 'n'}.get(choice, 'n')
 
     @classmethod
     def _prompt_craft_skill(cls, character):
         skills = list(cls.CRAFT_SKILL_LEVEL_ATTR.keys())
-        print('Which craft skill do you want to use?')
-
+        lines = ['Which craft skill do you want to use?']
         for idx, skill in enumerate(skills, 1):
             level = getattr(character, cls.CRAFT_SKILL_LEVEL_ATTR[skill], 0)
-            print(f'  {idx} - {skill} (your level: {level})')
-
-        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(skills))
+            lines.append(f'  {idx} - {skill} (your level: {level})')
+        lines.append('Please type a number: ')
+        choice = _prompt_int('\n'.join(lines), min_val=1, max_val=len(skills), display=character.display)
 
         if choice is None:
             return None
@@ -316,15 +305,14 @@ class ItemsScenarios(BaseGameClient):
         return skills[choice - 1]
 
     @classmethod
-    def _prompt_item_type(cls, items_by_type):
+    def _prompt_item_type(cls, items_by_type, display):
         types = sorted(items_by_type.keys())
-        print('What type of item do you want to craft?')
-
+        lines = ['What type of item do you want to craft?']
         for idx, item_type in enumerate(types, 1):
             count = len(items_by_type[item_type])
-            print(f'  {idx} - {item_type} ({count} item{"s" if count != 1 else ""})')
-
-        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(types))
+            lines.append(f'  {idx} - {item_type} ({count} item{"s" if count != 1 else ""})')
+        lines.append('Please type a number: ')
+        choice = _prompt_int('\n'.join(lines), min_val=1, max_val=len(types), display=display)
 
         if choice is None:
             return None
@@ -332,17 +320,16 @@ class ItemsScenarios(BaseGameClient):
         return types[choice - 1]
 
     @classmethod
-    def _prompt_item(cls, items):
-        print('Which item do you want to craft?')
-
+    def _prompt_item(cls, items, display):
+        lines = ['Which item do you want to craft?']
         for idx, item in enumerate(items, 1):
             craft = item.get('craft', {})
             craft_skill = craft.get('skill', '?')
             craft_level = craft.get('level', '?')
-            print(f'  {idx} - {item["name"]} (item level {item.get("level", "?")}, '
+            lines.append(f'  {idx} - {item["name"]} (item level {item.get("level", "?")}, '
                   f'requires {craft_skill} level {craft_level})')
-
-        choice = _prompt_int('Please type a number: ', min_val=1, max_val=len(items))
+        lines.append('Please type a number: ')
+        choice = _prompt_int('\n'.join(lines), min_val=1, max_val=len(items), display=display)
 
         if choice is None:
             return None
@@ -355,14 +342,14 @@ class ItemsScenarios(BaseGameClient):
         while remaining > 0:
             batch = cls._calc_batch_size(character, item, remaining)
             if batch == 0:
-                print(f'Inventory full. Cannot craft {item["code"]}.')
+                character.display.print(f'Inventory full. Cannot craft {item["code"]}.')
                 break
             if batch < remaining:
-                print(f'Inventory space limited: crafting {batch} instead of {remaining} (batch).')
+                character.display.print(f'Inventory space limited: crafting {batch} instead of {remaining} (batch).')
             craft_per_exec = (item.get('craft') or {}).get('quantity', 1)
             actual = ((batch + craft_per_exec - 1) // craft_per_exec) * craft_per_exec
             if actual != batch:
-                print(f'Recipe produces {craft_per_exec} per batch: crafting {actual} instead of {batch}.')
+                character.display.print(f'Recipe produces {craft_per_exec} per batch: crafting {actual} instead of {batch}.')
             cls._craft_recursive(character, item, actual, depth=0)
             remaining -= actual
 
@@ -417,19 +404,19 @@ class ItemsScenarios(BaseGameClient):
                 character.move(*ws[:2])
                 character.recycling(item_code, quantity)
             else:
-                print('No workshop found for recycling.')
+                character.display.print('No workshop found for recycling.')
 
     @classmethod
     def _craft_recursive(cls, character, item, quantity, depth):
         craft = item.get('craft')
 
         if not craft:
-            _gather_base_item(character, item['code'], quantity)
+            _gather_base_item(character, item['code'], quantity, display=character.display)
 
             return
 
         if depth >= cls.MAX_RECIPE_DEPTH:
-            print(f'Warning: recipe depth limit ({cls.MAX_RECIPE_DEPTH}) reached for {item["code"]}.')
+            character.display.print(f'Warning: recipe depth limit ({cls.MAX_RECIPE_DEPTH}) reached for {item["code"]}.')
 
             return
 
@@ -442,14 +429,14 @@ class ItemsScenarios(BaseGameClient):
             req_item = _fetch_item_details(character, req_code)
 
             if req_item is None:
-                print(f'Warning: can\'t find details for required item {req_code}, skipping.')
+                character.display.print(f'Warning: can\'t find details for required item {req_code}, skipping.')
 
                 continue
 
             # Check how many we already have in inventory
             inv_qty = _inventory_quantity(character, req_code)
             if inv_qty >= req_qty:
-                print(f'  Already have {inv_qty}x {req_code} in inventory, skipping.')
+                character.display.print(f'  Already have {inv_qty}x {req_code} in inventory, skipping.')
                 continue
 
             needed = req_qty - inv_qty
@@ -457,7 +444,7 @@ class ItemsScenarios(BaseGameClient):
             # Try to withdraw the deficit from bank
             withdrawn = _withdraw_from_bank(character, req_code, needed)
             if withdrawn:
-                print(f'  Withdrew {withdrawn}x {req_code} from bank.')
+                character.display.print(f'  Withdrew {withdrawn}x {req_code} from bank.')
                 needed -= withdrawn
 
             if needed <= 0:

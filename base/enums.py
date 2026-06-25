@@ -1,4 +1,4 @@
-from base import BaseEnumerate
+from base.base import BaseEnumerate
 
 
 class CharacterSkinsEnum(BaseEnumerate):
@@ -132,6 +132,7 @@ class ActionTypeEnum(BaseEnumerate):
     CHANGE_PASSWORD = 'change password'
     LOGIN_WITH_PASSWORD = 'login with password'
     SELECT_CHARACTER = 'select character'
+    CREATE_CHARACTER = 'create character'
 
     USE_SCENARIO = 'use scenario'
 
@@ -141,6 +142,7 @@ class ActionTypeEnum(BaseEnumerate):
         CHANGE_PASSWORD,
         LOGIN_WITH_PASSWORD,
         SELECT_CHARACTER,
+        CREATE_CHARACTER,
     ]
 
     CHARACTER_ACTIONS = [
