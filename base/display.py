@@ -67,10 +67,6 @@ class Display(ABC):
     def show_character_actions(self):
         ...
 
-    @abstractmethod
-    def show_account_actions(self):
-        ...
-
     # ── Shared logic moved from subclasses ───────────────────────
 
     def prepare_menu(self, iterable):
@@ -279,9 +275,6 @@ class Display(ABC):
         for l in self._format_stats_effects(character):
             lines.append(f'  {l}')
         self._show_window('Stats', '\n'.join(lines))
-
-
-
 
     def show_account_actions(self):
         pass

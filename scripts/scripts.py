@@ -1,10 +1,9 @@
 import functools
-from base import BaseClient
 from base.enums import MapTypesEnum, TaskTypeEnum
 from scripts.items_scripts import ItemsScenarios, _prompt_int
 
 
-class _ScenarioHelpers(BaseClient):
+class _ScenarioHelpers:
     """Base class for scenario collections.
 
     All helpers are static methods that take the active character as
@@ -198,7 +197,7 @@ class OtherScenarios(_ScenarioHelpers):
         character.deposit_gold(quantity)
 
 
-class ScenariosStorage(BaseClient):
+class ScenariosStorage:
     """Aggregator that binds the active character to each scenario.
 
     Holds ``self.character`` and exposes ``scenarios_category_map`` whose
@@ -212,8 +211,6 @@ class ScenariosStorage(BaseClient):
     )
 
     def __init__(self, character):
-        super().__init__()
-
         self.character = character
 
         self.scenarios_category_map = {

@@ -289,4 +289,4 @@ class BaseGameClient(BaseClient):
         if response.status_code >= 400:
             return {}
 
-        return payload.get('data', {} if response.status_code == 204 else {})
+        return payload.get('data', {})

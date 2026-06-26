@@ -9,7 +9,7 @@ import customtkinter as ctk
 import requests
 from PIL import Image as PILImage, ImageTk
 
-from console_client.api import GameClient
+from gui_client.client import GUIClient as GameClient
 from base.display import Display
 from base.enums import ActionTypeEnum, CharacterSexEnum, ImageCategoryEnum, MapTypesEnum
 from base.images import IMAGE_URL_TEMPLATE

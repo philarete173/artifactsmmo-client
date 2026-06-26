@@ -1,4 +1,3 @@
-from base import BaseClient, BaseGameClient
 from base.enums import MapTypesEnum
 
 
@@ -219,7 +218,7 @@ def _craft_at_workshop(character, item_code, craft_skill, executions):
     character.crafting(item_code, executions)
 
 
-class ItemsScenarios(BaseGameClient):
+class ItemsScenarios:
     """Generic crafting scenarios driven by the /items API.
 
     A single ``craft_any_item`` scenario replaces all per-item ``craft_X``
@@ -231,11 +230,6 @@ class ItemsScenarios(BaseGameClient):
     CRAFT_SKILL_LEVEL_ATTR = CRAFT_SKILL_LEVEL_ATTR
 
     MAX_RECIPE_DEPTH = 10
-
-    def __init__(self, character):
-        super().__init__()
-
-        self.character = character
 
     @staticmethod
     def get_scenarios(character):
